@@ -148,9 +148,20 @@ export const TestView: React.FC<TestViewProps> = ({
               </span>
             </div>
 
+            {/* Question Image / Diagram / Table if present */}
+            {currentQuestion?.image && (
+              <div className="mb-5 flex justify-center bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
+                <img
+                  src={currentQuestion.image}
+                  alt="Lampiran Soal"
+                  className="max-h-72 sm:max-h-96 w-auto object-contain rounded-xl border border-slate-100"
+                />
+              </div>
+            )}
+
             {/* Question Text */}
             <div
-              className="text-sm sm:text-base md:text-lg text-gray-800 mb-6 leading-relaxed font-medium"
+              className="text-sm sm:text-base md:text-lg text-gray-800 mb-6 leading-relaxed font-medium overflow-x-auto"
               dangerouslySetInnerHTML={{ __html: currentQuestion?.question || '' }}
             />
 

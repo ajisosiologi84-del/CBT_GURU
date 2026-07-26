@@ -27,6 +27,9 @@ export default function App() {
             ...parsed,
             examToken: parsed.examToken || 'SOS2026',
             students: Array.isArray(parsed.students) ? parsed.students : defaultStudents,
+            maxQuestionsToDisplay: typeof parsed.maxQuestionsToDisplay === 'number' ? parsed.maxQuestionsToDisplay : 0,
+            randomizeQuestions: parsed.randomizeQuestions !== false,
+            randomizeOptions: parsed.randomizeOptions !== false,
           };
         }
       }
@@ -39,6 +42,13 @@ export default function App() {
       questions: defaultQuestions,
       examToken: 'SOS2026',
       students: defaultStudents,
+      teachers: [
+        { id: 't1', nip: '198501152010011002', nama: 'Drs. Aji Sosiologi, M.Pd', mapel: 'Sosiologi' },
+        { id: 't2', nip: '198803202012022005', nama: 'Siti Rahmawati, S.Pd', mapel: 'Sosiologi' },
+      ],
+      maxQuestionsToDisplay: 0,
+      randomizeQuestions: true,
+      randomizeOptions: true,
     };
   });
 
@@ -75,8 +85,9 @@ export default function App() {
     }
   }, []);
 
-  // View State
+  // View State & Admin Role
   const [viewState, setViewState] = useState<ViewState>('login');
+  const [adminRole, setAdminRole] = useState<'admin' | 'teacher'>('admin');
 
   // Student Session State
   const [studentInfo, setStudentInfo] = useState<StudentInfo>({
@@ -171,12 +182,28 @@ export default function App() {
       });
     }
 
-    // Shuffle Questions and Options
-    const shuffledQ = shuffleArray<Question>(activePool);
-    const preparedQuestions: Question[] = shuffledQ.map((q: Question) => {
+    // 1. Prepare active questions pool
+    let pool = [...activePool];
+
+    // 2. Randomize questions order if enabled (default true)
+    if (config.randomizeQuestions !== false) {
+      pool = shuffleArray<Question>(pool);
+    }
+
+    // 3. Limit total questions displayed if maxQuestionsToDisplay > 0
+    const maxQ = Number(config.maxQuestionsToDisplay || 0);
+    if (maxQ > 0 && maxQ < pool.length) {
+      pool = pool.slice(0, maxQ);
+    }
+
+    // 4. Randomize options for each question if enabled (default true)
+    const preparedQuestions: Question[] = pool.map((q: Question) => {
+      let opts = [...q.options];
+      if (config.randomizeOptions !== false) {
+        opts = shuffleArray<Option>(opts);
+      }
       const labels = ['A', 'B', 'C', 'D', 'E'];
-      const shuffledOpts = shuffleArray<Option>(q.options);
-      const mappedOpts: Option[] = shuffledOpts.map((opt: Option, i: number) => ({
+      const mappedOpts: Option[] = opts.map((opt: Option, i: number) => ({
         id: labels[i],
         text: opt.text,
         isCorrect: opt.isCorrect,
@@ -221,9 +248,9 @@ export default function App() {
 
       setWarnings((prev) => {
         const nextWarnings = prev + 1;
-        if (nextWarnings > maxWarnings) {
+        if (nextWarnings >= maxWarnings) {
           triggerAutoSubmit(
-            'Anda telah melanggar batas maksimal peringatan keamanan (3 kali). Ujian dihentikan paksa.'
+            'Anda telah melanggar batas maksimal peringatan keamanan (3 kali). Ujian dihentikan paksa dan jawaban otomatis terkirim.'
           );
           return nextWarnings;
         }
@@ -405,6 +432,7 @@ export default function App() {
     question: string;
     options: Option[];
     explanation: string;
+    image?: string;
     mapel?: string;
     id?: number;
   }) => {
@@ -419,6 +447,7 @@ export default function App() {
           question: qData.question,
           options: qData.options,
           explanation: qData.explanation,
+          image: qData.image,
           mapel: qData.mapel || updatedQuestions[idx].mapel || config.mapel || 'Sosiologi',
         };
       }
@@ -430,6 +459,7 @@ export default function App() {
         question: qData.question,
         options: qData.options,
         explanation: qData.explanation,
+        image: qData.image,
         mapel: qData.mapel || config.mapel || 'Sosiologi',
       });
     }
@@ -465,7 +495,10 @@ export default function App() {
             setStudentInfo(info);
             setViewState('pre-test');
           }}
-          onAdminLoginSuccess={() => setViewState('admin')}
+          onAdminLoginSuccess={(role) => {
+            setAdminRole(role);
+            setViewState('admin');
+          }}
         />
       )}
 
@@ -473,6 +506,7 @@ export default function App() {
         <AdminPanel
           config={config}
           studentResults={studentResults}
+          adminRole={adminRole}
           onSaveConfig={saveConfig}
           onSaveStudentResults={saveStudentResults}
           onOpenQuestionModal={(q) => {

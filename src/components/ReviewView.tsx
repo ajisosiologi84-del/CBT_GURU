@@ -73,8 +73,18 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ questions, answers, onEx
                   </span>
                 </div>
 
+                {q.image && (
+                  <div className="mb-5 flex justify-center bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
+                    <img
+                      src={q.image}
+                      alt="Lampiran Soal"
+                      className="max-h-72 w-auto object-contain rounded-xl border border-slate-100"
+                    />
+                  </div>
+                )}
+
                 <div
-                  className="text-gray-800 mb-6 font-medium text-base sm:text-lg leading-relaxed"
+                  className="text-gray-800 mb-6 font-medium text-base sm:text-lg leading-relaxed overflow-x-auto"
                   dangerouslySetInnerHTML={{ __html: q.question }}
                 />
 

@@ -51,10 +51,92 @@ export function exportOfflineAppHtml(config: AppConfig): void {
   <!-- Main Container -->
   <main id="app-root" class="flex-1 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
     <div id="login-screen" class="bg-white rounded-3xl shadow-2xl w-full max-w-md my-auto overflow-hidden">
-      <div class="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 sm:p-6 text-center text-white">
-        <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-2 text-2xl">💻</div>
+      <div class="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 p-6 text-center text-white flex flex-col items-center justify-center">
+        <div class="w-24 h-24 mb-2 drop-shadow-md">
+          <svg viewBox="0 0 500 500" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bgGradOff" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#1e40af" />
+                <stop offset="100%" stop-color="#0f172a" />
+              </linearGradient>
+              <linearGradient id="deskGradOff" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f97316" />
+                <stop offset="100%" stop-color="#c2410c" />
+              </linearGradient>
+            </defs>
+            <rect x="15" y="15" width="470" height="470" rx="64" fill="url(#bgGradOff)" stroke="#60a5fa" stroke-width="10" />
+            <rect x="28" y="28" width="444" height="444" rx="52" fill="none" stroke="#3b82f6" stroke-width="4" opacity="0.6" />
+            <rect x="50" y="70" width="400" height="300" rx="36" fill="#e0f2fe" opacity="0.95" />
+            <path d="M 50 200 L 450 200 L 450 334 C 450 354 434 370 414 370 L 86 370 C 66 370 50 354 50 334 Z" fill="#bae6fd" opacity="0.5" />
+            <rect x="68" y="86" width="56" height="56" rx="14" fill="#1e3a8a" />
+            <path d="M 96 98 L 112 110 L 80 110 Z" fill="#ffffff" />
+            <rect x="83" y="110" width="26" height="20" fill="#ffffff" />
+            <rect x="91" y="118" width="10" height="12" fill="#1e3a8a" />
+            <circle cx="96" cy="106" r="3" fill="#1e3a8a" />
+            <circle cx="410" cy="112" r="22" fill="#ffffff" stroke="#0284c7" stroke-width="4" />
+            <path d="M 410 100 L 410 112 L 420 112" stroke="#0284c7" stroke-width="3" stroke-linecap="round" fill="none" />
+            <rect x="250" y="105" width="160" height="250" rx="24" fill="#0f172a" stroke="#38bdf8" stroke-width="4" />
+            <rect x="260" y="120" width="140" height="220" rx="16" fill="#f8fafc" />
+            <rect x="300" y="110" width="60" height="6" rx="3" fill="#334155" />
+            <text x="270" y="142" font-family="sans-serif" font-size="12" font-weight="800" fill="#0284c7">Q 24/60</text>
+            <text x="345" y="142" font-family="sans-serif" font-size="11" font-weight="700" fill="#64748b">⏱ 0:14:32</text>
+            <line x1="270" y1="150" x2="390" y2="150" stroke="#e2e8f0" stroke-width="2" />
+            <g transform="translate(270, 160)">
+              <circle cx="14" cy="12" r="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" />
+              <text x="14" y="16" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="800" fill="#0369a1">A</text>
+              <rect x="32" y="7" width="70" height="10" rx="5" fill="#cbd5e1" />
+              <circle cx="14" cy="38" r="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" />
+              <text x="14" y="42" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="800" fill="#0369a1">B</text>
+              <rect x="32" y="33" width="70" height="10" rx="5" fill="#cbd5e1" />
+              <circle cx="14" cy="64" r="10" fill="#10b981" />
+              <text x="14" y="68" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="800" fill="#ffffff">C</text>
+              <rect x="32" y="59" width="70" height="10" rx="5" fill="#10b981" />
+              <circle cx="112" cy="64" r="8" fill="#10b981" />
+              <path d="M 108 64 L 111 67 L 116 61" stroke="#ffffff" stroke-width="2" stroke-linecap="round" fill="none" />
+              <circle cx="14" cy="90" r="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="2" />
+              <text x="14" y="94" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="800" fill="#0369a1">D</text>
+              <rect x="32" y="85" width="70" height="10" rx="5" fill="#cbd5e1" />
+            </g>
+            <rect x="110" y="240" width="40" height="90" rx="8" fill="#ea580c" />
+            <rect x="115" y="310" width="8" height="50" fill="#78350f" />
+            <rect x="137" y="310" width="8" height="50" fill="#78350f" />
+            <path d="M 140 280 L 200 280 L 200 360 L 175 360 L 175 310 L 155 310 L 155 360 L 130 360 Z" fill="#1e3a8a" />
+            <path d="M 140 200 Q 170 190 200 200 L 210 280 L 135 280 Z" fill="#ffffff" />
+            <path d="M 170 200 L 176 200 L 178 245 L 173 252 L 168 245 Z" fill="#1e3a8a" />
+            <path d="M 158 198 L 173 208 L 163 212 Z" fill="#e2e8f0" />
+            <path d="M 188 198 L 173 208 L 183 212 Z" fill="#e2e8f0" />
+            <path d="M 142 215 Q 180 230 220 225" stroke="#fca5a5" stroke-width="16" stroke-linecap="round" fill="none" />
+            <path d="M 190 220 Q 215 235 235 225" stroke="#fca5a5" stroke-width="14" stroke-linecap="round" fill="none" />
+            <rect x="220" y="200" width="30" height="50" rx="6" fill="#0f172a" transform="rotate(-10 235 225)" />
+            <rect x="223" y="205" width="24" height="40" rx="4" fill="#38bdf8" transform="rotate(-10 235 225)" />
+            <circle cx="172" cy="160" r="22" fill="#fca5a5" />
+            <path d="M 148 158 C 148 135 160 130 178 130 C 196 130 200 145 198 160 C 192 145 180 142 168 148 C 158 152 152 155 148 158 Z" fill="#1e293b" />
+            <circle cx="152" cy="162" r="5" fill="#fca5a5" />
+            <circle cx="180" cy="158" r="2.5" fill="#0f172a" />
+            <path d="M 176 168 Q 182 174 187 168" stroke="#0f172a" stroke-width="2" stroke-linecap="round" fill="none" />
+            <rect x="170" y="260" width="160" height="18" rx="4" fill="url(#deskGradOff)" />
+            <rect x="180" y="278" width="14" height="82" fill="#9a3412" />
+            <rect x="306" y="278" width="14" height="82" fill="#9a3412" />
+            <rect x="200" y="248" width="45" height="14" fill="#ffffff" rx="2" transform="rotate(-4 220 255)" />
+            <line x1="205" y1="252" x2="235" y2="250" stroke="#94a3b8" stroke-width="2" />
+            <line x1="205" y1="256" x2="230" y2="254" stroke="#94a3b8" stroke-width="2" />
+            <rect x="250" y="254" width="25" height="4" fill="#eab308" rx="1" transform="rotate(5 260 255)" />
+            <rect x="35" y="380" width="430" height="90" rx="24" fill="#0a192f" />
+            <text x="250" y="426" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="38" font-weight="900" fill="#ffffff" letter-spacing="1">CBT_GURUAI</text>
+            <text x="250" y="454" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="800" fill="#60a5fa" letter-spacing="3">APLIKASI UJIAN SISWA</text>
+          </svg>
+        </div>
         <h2 class="text-xl font-black">Ujian CBT Offline</h2>
         <p class="text-blue-100 text-xs mt-0.5">${mapelName} - ${subTitle}</p>
+      </div>
+
+      <div class="p-1 bg-slate-100 mx-4 sm:mx-6 mt-4 rounded-xl flex border border-slate-200 gap-1 text-xs font-bold">
+        <button id="tab-siswa-btn" type="button" class="flex-1 py-2 rounded-lg bg-white text-blue-700 shadow-xs flex items-center justify-center gap-1 cursor-pointer">
+          👥 User Siswa
+        </button>
+        <button id="tab-guru-btn" type="button" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 cursor-pointer">
+          🎓 User Guru
+        </button>
       </div>
 
       <div class="p-4 sm:p-6 space-y-4">
@@ -65,21 +147,55 @@ export function exportOfflineAppHtml(config: AppConfig): void {
           <span id="active-token-badge" class="font-mono font-black bg-blue-600 text-white px-2.5 py-1 rounded-lg text-sm"></span>
         </div>
 
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">NIS / No. Peserta</label>
-          <input type="text" id="input-nis" placeholder="Masukkan NIS (contoh: 1001)" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-sm font-semibold focus:border-blue-500 outline-none">
+        {/* Siswa Form */}
+        <div id="siswa-form" class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">NIS / No. Peserta Siswa</label>
+            <input type="text" id="input-nis" placeholder="Masukkan NIS (contoh: 1001)" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-sm font-semibold focus:border-blue-500 outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">TOKEN Ujian Dari Guru</label>
+            <input type="text" id="input-token" placeholder="Masukkan TOKEN" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-sm font-bold font-mono uppercase tracking-widest text-blue-900 focus:border-blue-500 outline-none">
+          </div>
+
+          <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3 rounded-xl text-sm transition shadow-md cursor-pointer">
+            Mulai Ujian Offline (Siswa)
+          </button>
         </div>
 
-        <div>
-          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">TOKEN Ujian Dari Guru</label>
-          <input type="text" id="input-token" placeholder="Masukkan TOKEN" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-sm font-bold font-mono uppercase tracking-widest text-blue-900 focus:border-blue-500 outline-none">
+        {/* Guru Form */}
+        <div id="guru-form" class="hidden space-y-3">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">NIP (Nomor Induk Pegawai)</label>
+            <input type="text" id="input-teacher-nip" placeholder="Contoh: 198501152010011002" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-sm font-semibold focus:border-indigo-500 outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">NAMA LENGKAP GURU</label>
+            <input type="text" id="input-teacher-nama" placeholder="Contoh: Drs. Aji Sosiologi, M.Pd" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-sm font-semibold focus:border-indigo-500 outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">MATA PELAJARAN</label>
+            <input type="text" id="input-teacher-mapel" placeholder="Contoh: Sosiologi" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-sm font-semibold focus:border-indigo-500 outline-none">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-600 mb-1">TOKEN Ujian</label>
+            <input type="text" id="input-teacher-token" placeholder="Masukkan TOKEN" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-sm font-bold font-mono uppercase tracking-widest text-indigo-900 focus:border-indigo-500 outline-none">
+          </div>
+
+          <button id="btn-login-teacher" class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-3 rounded-xl text-sm transition shadow-md cursor-pointer">
+            Mulai Ujian Offline (Guru)
+          </button>
         </div>
 
-        <button id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
-          Mulai Ujian Offline
-        </button>
-
-        <p class="text-center text-[11px] text-slate-400">© 2026 Standalone Offline CBT Sosiologi</p>
+        <p class="text-center text-[11px] text-slate-400 border-t border-slate-100 pt-3">
+          <a href="https://lynk.id/ajisosiologi" target="_blank" rel="noopener noreferrer" class="hover:underline font-bold text-blue-600">
+            @ajisosiologi
+          </a> - Standalone Offline CBT Sosiologi
+        </p>
       </div>
     </div>
 
@@ -148,19 +264,23 @@ export function exportOfflineAppHtml(config: AppConfig): void {
     <div id="result-screen" class="hidden bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 text-center space-y-6">
       <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto text-3xl font-black">✓</div>
       <div>
-        <h2 class="text-2xl font-black text-slate-900">Ujian Selesai!</h2>
+        <h2 class="text-2xl font-black text-slate-900">Ujian Telah Selesai!</h2>
         <p class="text-xs text-slate-500 mt-1">Jawaban Anda berhasil disimpan dan terenkripsi secara aman.</p>
       </div>
 
-      <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-2">
-        <p class="text-xs text-slate-500 font-bold uppercase">SKOR PEROLEHAN ANDA</p>
-        <div id="final-score-text" class="text-5xl font-black text-blue-600">0</div>
-        <p id="final-status-text" class="text-xs font-bold text-slate-600"></p>
+      <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 text-left space-y-2">
+        <p class="text-xs font-bold text-slate-700 uppercase tracking-wider">STATUS PENGIRIMAN JAWABAN</p>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Jawaban Anda telah tersimpan secara otomatis. Silakan unduh file jawaban <b>.cbt</b> di bawah ini dan serahkan kepada Guru atau Pengawas Ujian Anda untuk direkap.
+        </p>
       </div>
 
       <div class="space-y-3">
-        <button id="btn-download-cbt" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2">
+        <button id="btn-download-cbt" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer">
           📥 Unduh File Jawaban Terenkripsi (.cbt)
+        </button>
+        <button id="btn-exit-app" class="w-full bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white font-bold py-3 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer">
+          🚪 Keluar dari Aplikasi
         </button>
         <p class="text-[11px] text-slate-400">Kirimkan file <b>.cbt</b> yang diunduh ini kepada Guru Anda untuk direkap.</p>
       </div>
@@ -171,12 +291,24 @@ export function exportOfflineAppHtml(config: AppConfig): void {
   <script>
     const CONFIG = ${configJson};
     let currentStudent = null;
+    let activeExamQuestions = [];
     let activeQuestionIndex = 0;
-    let userAnswers = Array(CONFIG.questions.length).fill(null);
+    let userAnswers = [];
     let warningsCount = 0;
     let timeLeftSeconds = (CONFIG.duration || 60) * 60;
     let timerInterval = null;
     let lastResultObj = null;
+
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+      }
+      return arr;
+    }
 
     const SECRET_KEY = 'CBT_SOSIOLOGI_2026_KEY_GURU_SEKOLAH_SECURE_AUTH';
 
@@ -254,9 +386,8 @@ export function exportOfflineAppHtml(config: AppConfig): void {
     const btnCancelFinish = document.getElementById('btn-cancel-finish');
     const btnConfirmFinish = document.getElementById('btn-confirm-finish');
 
-    const finalScoreText = document.getElementById('final-score-text');
-    const finalStatusText = document.getElementById('final-status-text');
     const btnDownloadCbt = document.getElementById('btn-download-cbt');
+    const btnExitApp = document.getElementById('btn-exit-app');
 
     // Initialize
     activeTokenBadge.textContent = CONFIG.examToken || 'SOS2026';
@@ -265,6 +396,27 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       errorAlert.textContent = msg;
       errorAlert.classList.remove('hidden');
     }
+
+    const tabSiswaBtn = document.getElementById('tab-siswa-btn');
+    const tabGuruBtn = document.getElementById('tab-guru-btn');
+    const siswaForm = document.getElementById('siswa-form');
+    const guruForm = document.getElementById('guru-form');
+
+    tabSiswaBtn.addEventListener('click', () => {
+      siswaForm.classList.remove('hidden');
+      guruForm.classList.add('hidden');
+      tabSiswaBtn.className = "flex-1 py-2 rounded-lg bg-white text-blue-700 shadow-xs flex items-center justify-center gap-1 cursor-pointer";
+      tabGuruBtn.className = "flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 cursor-pointer";
+      errorAlert.classList.add('hidden');
+    });
+
+    tabGuruBtn.addEventListener('click', () => {
+      guruForm.classList.remove('hidden');
+      siswaForm.classList.add('hidden');
+      tabGuruBtn.className = "flex-1 py-2 rounded-lg bg-white text-indigo-700 shadow-xs flex items-center justify-center gap-1 cursor-pointer";
+      tabSiswaBtn.className = "flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 cursor-pointer";
+      errorAlert.classList.add('hidden');
+    });
 
     btnLogin.addEventListener('click', () => {
       errorAlert.classList.add('hidden');
@@ -288,12 +440,69 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       startExam();
     });
 
+    const btnLoginTeacher = document.getElementById('btn-login-teacher');
+    btnLoginTeacher.addEventListener('click', () => {
+      errorAlert.classList.add('hidden');
+      const nip = document.getElementById('input-teacher-nip').value.trim();
+      const nama = document.getElementById('input-teacher-nama').value.trim();
+      const mapel = document.getElementById('input-teacher-mapel').value.trim();
+      const token = document.getElementById('input-teacher-token').value.trim().toUpperCase();
+      const validToken = (CONFIG.examToken || 'SOS2026').toUpperCase();
+
+      if (!nip) return showError('Harap masukkan NIP Guru!');
+      if (!token) return showError('Harap masukkan TOKEN Ujian!');
+      if (token !== validToken) return showError('TOKEN Ujian Salah atau Tidak Valid!');
+
+      const teachers = CONFIG.teachers || [];
+      const found = teachers.find(t => t.nip.toLowerCase() === nip.toLowerCase());
+
+      const finalNama = nama || (found ? found.nama : 'Guru (NIP: ' + nip + ')');
+      const finalMapel = mapel || (found ? found.mapel : 'Sosiologi');
+
+      currentStudent = { name: finalNama, noPeserta: 'NIP. ' + nip, mapel: finalMapel + ' TKA 2026', role: 'teacher' };
+      startExam();
+    });
+
     function startExam() {
       loginScreen.classList.add('hidden');
       testScreen.classList.remove('hidden');
 
       studentDisplayName.textContent = currentStudent.name;
       studentDisplayNis.textContent = currentStudent.noPeserta;
+
+      // 1. Prepare active questions pool
+      let pool = CONFIG.questions ? [...CONFIG.questions] : [];
+
+      // 2. Randomize questions order if enabled (default true)
+      if (CONFIG.randomizeQuestions !== false) {
+        pool = shuffleArray(pool);
+      }
+
+      // 3. Limit total questions if maxQuestionsToDisplay > 0
+      const maxQ = Number(CONFIG.maxQuestionsToDisplay || 0);
+      if (maxQ > 0 && maxQ < pool.length) {
+        pool = pool.slice(0, maxQ);
+      }
+
+      // 4. Randomize options for each question if enabled (default true)
+      activeExamQuestions = pool.map(function(q) {
+        let opts = q.options ? [...q.options] : [];
+        if (CONFIG.randomizeOptions !== false) {
+          opts = shuffleArray(opts);
+        }
+        const labels = ['A', 'B', 'C', 'D', 'E'];
+        const mappedOpts = opts.map(function(opt, idx) {
+          return {
+            id: labels[idx] || opt.id,
+            text: opt.text,
+            isCorrect: opt.isCorrect
+          };
+        });
+        return Object.assign({}, q, { options: mappedOpts });
+      });
+
+      userAnswers = Array(activeExamQuestions.length).fill(null);
+      activeQuestionIndex = 0;
 
       renderQuestion();
       startTimer();
@@ -306,10 +515,12 @@ export function exportOfflineAppHtml(config: AppConfig): void {
     }
 
     function renderQuestion() {
-      const q = CONFIG.questions[activeQuestionIndex];
+      if (!activeExamQuestions || activeExamQuestions.length === 0) return;
+      const q = activeExamQuestions[activeQuestionIndex];
       qNumberBadge.textContent = 'Soal ' + (activeQuestionIndex + 1);
-      qTotalBadge.textContent = 'Total ' + CONFIG.questions.length + ' Soal';
-      questionText.innerHTML = q.question;
+      qTotalBadge.textContent = 'Total ' + activeExamQuestions.length + ' Soal';
+      var imgHtml = q.image ? '<div style="margin-bottom:16px;text-align:center;background:#f8fafc;padding:10px;border-radius:12px;border:1px solid #e2e8f0;"><img src="' + q.image + '" style="max-height:300px;max-width:100%;object-fit:contain;border-radius:8px;" alt="Gambar Soal" /></div>' : '';
+      questionText.innerHTML = imgHtml + q.question;
 
       optionsContainer.innerHTML = '';
       q.options.forEach((opt) => {
@@ -331,7 +542,7 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       });
 
       btnPrev.disabled = activeQuestionIndex === 0;
-      btnNext.disabled = activeQuestionIndex === CONFIG.questions.length - 1;
+      btnNext.disabled = activeQuestionIndex === activeExamQuestions.length - 1;
     }
 
     btnPrev.addEventListener('click', () => {
@@ -342,7 +553,7 @@ export function exportOfflineAppHtml(config: AppConfig): void {
     });
 
     btnNext.addEventListener('click', () => {
-      if (activeQuestionIndex < CONFIG.questions.length - 1) {
+      if (activeQuestionIndex < activeExamQuestions.length - 1) {
         activeQuestionIndex++;
         renderQuestion();
       }
@@ -383,13 +594,13 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       isExamFinished = true;
       clearInterval(timerInterval);
       let correct = 0;
-      CONFIG.questions.forEach((q, idx) => {
+      activeExamQuestions.forEach((q, idx) => {
         const userOpt = userAnswers[idx];
         const correctOpt = q.options.find(o => o.isCorrect);
         if (userOpt && correctOpt && userOpt === correctOpt.id) correct++;
       });
 
-      const total = CONFIG.questions.length;
+      const total = activeExamQuestions.length;
       const score = Math.round((correct / total) * 100);
       const isPassed = score >= (CONFIG.kkm || 75);
 
@@ -409,10 +620,52 @@ export function exportOfflineAppHtml(config: AppConfig): void {
 
       testScreen.classList.add('hidden');
       resultScreen.classList.remove('hidden');
-
-      finalScoreText.textContent = score;
-      finalStatusText.textContent = isPassed ? 'STATUS: LULUS (≥ KKM ' + CONFIG.kkm + ')' : 'STATUS: TIDAK LULUS (< KKM ' + CONFIG.kkm + ')';
     }
+
+    // Security & Anti-Cheat Handlers
+    let warningsCount = 0;
+    const maxWarnings = 3;
+
+    function handleViolation(reason) {
+      if (isExamFinished || !currentStudent) return;
+
+      warningsCount++;
+      if (warningsCount >= maxWarnings) {
+        alert('PERINGATAN KEAMANAN MAKSIMAL (' + warningsCount + '/3):\nAnda telah melanggar aturan sebanyak 3 kali (' + reason + '). Ujian otomatis dihentikan dan jawaban Anda langsung terkirim!');
+        finishExam();
+      } else {
+        alert('PERINGATAN KEAMANAN (' + warningsCount + '/3):\n' + reason + '\n\nPerhatian: Jika melanggar 3 kali, ujian akan otomatis dihentikan dan jawaban dikirim.');
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && !isExamFinished && testScreen && !testScreen.classList.contains('hidden')) {
+        handleViolation('Meninggalkan layar ujian atau berpindah aplikasi');
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (!document.hasFocus() && !isExamFinished && testScreen && !testScreen.classList.contains('hidden')) {
+          handleViolation('Layar ujian kehilangan fokus');
+        }
+      }, 300);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (!isExamFinished && testScreen && !testScreen.classList.contains('hidden')) {
+        if (
+          e.key === 'F12' ||
+          (e.ctrlKey && e.shiftKey && ['I', 'J', 'i', 'j'].includes(e.key)) ||
+          (e.ctrlKey && ['U', 'u', 'C', 'c', 'V', 'v'].includes(e.key)) ||
+          e.key === 'PrintScreen' ||
+          (e.altKey && e.key === 'Tab')
+        ) {
+          e.preventDefault();
+          handleViolation('Penggunaan shortcut keyboard dilarang');
+        }
+      }
+    });
 
     btnDownloadCbt.addEventListener('click', () => {
       if (!lastResultObj) return alert('Data jawaban tidak ditemukan!');
@@ -429,6 +682,12 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       URL.revokeObjectURL(url);
       alert('File hasil jawaban terenkripsi (.cbt) berhasil diunduh!');
     });
+
+    btnExitApp.addEventListener('click', () => {
+      if (confirm('Apakah Anda yakin ingin keluar dari aplikasi CBT? Halaman akan dikembalikan ke menu login awal.')) {
+        location.reload();
+      }
+    });
   </script>
 </body>
 </html>`;
@@ -437,7 +696,8 @@ export function exportOfflineAppHtml(config: AppConfig): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `Aplikasi_CBT_Sosiologi_Offline_2026.html`;
+  const cleanMapel = mapelName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+  link.download = `Aplikasi_CBT_${cleanMapel}_Offline_2026.html`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

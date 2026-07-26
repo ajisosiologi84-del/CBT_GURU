@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { AppConfig, StudentInfo } from '../types';
-import { exportOfflineAppHtml } from '../utils/offlineExport';
-import { Laptop, User, Key, LogIn, Settings, AlertCircle, Sparkles, KeyRound, Users, Download, WifiOff } from 'lucide-react';
+import { User, Key, LogIn, Settings, AlertCircle, KeyRound, Users, GraduationCap, BookOpen, UserCheck } from 'lucide-react';
+import { CbtLogo } from './CbtLogo';
 
 interface LoginViewProps {
   config: AppConfig;
   onStudentLoginSuccess: (studentInfo: StudentInfo) => void;
-  onAdminLoginSuccess: () => void;
+  onAdminLoginSuccess: (role: 'admin' | 'teacher') => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({
@@ -14,11 +14,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onStudentLoginSuccess,
   onAdminLoginSuccess,
 }) => {
-  const [activeMode, setActiveMode] = useState<'student' | 'admin'>('student');
+  const [activeMode, setActiveMode] = useState<'student' | 'teacher' | 'admin'>('student');
   
   // Student Login Fields
   const [nis, setNis] = useState('');
   const [tokenInput, setTokenInput] = useState('');
+
+  // Teacher Login Fields
+  const [teacherNip, setTeacherNip] = useState('');
+  const [teacherNama, setTeacherNama] = useState('');
+  const [teacherMapel, setTeacherMapel] = useState('');
+  const [teacherToken, setTeacherToken] = useState('');
 
   // Admin Login Fields
   const [adminUser, setAdminUser] = useState('');
@@ -69,6 +75,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         name: foundStudent.nama,
         noPeserta: `${foundStudent.nis} (${foundStudent.kelas})`,
         mapel: currentMapelStr,
+        role: 'student',
       };
     } else {
       // If student not found in pre-registered DB, treat as guest with entered NIS
@@ -76,34 +83,68 @@ export const LoginView: React.FC<LoginViewProps> = ({
         name: `Siswa NIS: ${trimmedNis}`,
         noPeserta: `NIS-${trimmedNis}`,
         mapel: currentMapelStr,
+        role: 'student',
       };
     }
 
     onStudentLoginSuccess(studentInfo);
   };
 
+  const handleTeacherSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    const trimmedNip = teacherNip.trim();
+    const trimmedToken = teacherToken.trim().toUpperCase();
+    const activeExamToken = config.examToken ? config.examToken.trim().toUpperCase() : 'SOS2026';
+
+    if (!trimmedNip) {
+      triggerError('Harap masukkan NIP Guru!');
+      return;
+    }
+
+    if (!trimmedToken) {
+      triggerError('Harap masukkan TOKEN Ujian!');
+      return;
+    }
+
+    if (trimmedToken !== activeExamToken) {
+      triggerError(`TOKEN Ujian "${trimmedToken}" Salah atau Tidak Valid! Minta Token resmi dari Panitia.`);
+      return;
+    }
+
+    // Find teacher in DB if exists
+    const foundTeacher = (config.teachers || []).find(
+      (t) => t.nip.toLowerCase() === trimmedNip.toLowerCase()
+    );
+
+    const namaFinal = teacherNama.trim() || foundTeacher?.nama || `Guru (NIP: ${trimmedNip})`;
+    const mapelFinal = teacherMapel.trim() || foundTeacher?.mapel || config.mapel || 'Sosiologi';
+
+    const teacherInfo: StudentInfo = {
+      name: namaFinal,
+      noPeserta: `NIP. ${trimmedNip}`,
+      mapel: `${mapelFinal} (${config.mapelTitle || 'Assessment TKA 2026'})`,
+      role: 'teacher',
+    };
+
+    onStudentLoginSuccess(teacherInfo);
+  };
+
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (adminUser.trim() === 'admin' && adminPass.trim() === 'admin') {
-      onAdminLoginSuccess();
+    const u = adminUser.trim().toLowerCase();
+    const p = adminPass.trim();
+
+    if (u === 'admin' && p === 'admin') {
+      onAdminLoginSuccess('admin');
+    } else if (u === 'guru' && p === 'guru') {
+      onAdminLoginSuccess('teacher');
     } else {
-      triggerError('Kredensial Admin/Guru tidak valid!');
+      triggerError('Kredensial tidak valid! (Admin: admin/admin | Guru: guru/guru)');
     }
-  };
-
-  const handleQuickDemoStudent = (demoNis: string) => {
-    setNis(demoNis);
-    setTokenInput(config.examToken || 'SOS2026');
-    setErrorMsg('');
-  };
-
-  const handleQuickDemoAdmin = () => {
-    setActiveMode('admin');
-    setAdminUser('admin');
-    setAdminPass('admin');
-    setErrorMsg('');
   };
 
   return (
@@ -114,30 +155,42 @@ export const LoginView: React.FC<LoginViewProps> = ({
         }`}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-7 text-center text-white relative overflow-hidden">
-          <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-          <div className="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center mx-auto mb-3 backdrop-blur-md shadow-inner">
-            <Laptop className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-black tracking-tight">Portal CBT Mandiri</h1>
-          <p className="text-blue-100 text-xs mt-1 font-medium">Sosiologi - Assessment TKA SMA 2026</p>
+        <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 p-6 text-center text-white relative overflow-hidden flex flex-col items-center justify-center">
+          <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
+          <CbtLogo className="w-24 h-24 mb-2 drop-shadow-md" />
+          <h1 className="text-xl font-black tracking-tight">Portal CBT Mandiri</h1>
+          <p className="text-blue-200 text-xs mt-0.5 font-medium">Sosiologi - Assessment TKA SMA 2026</p>
         </div>
 
         {/* Mode Selector Switcher */}
-        <div className="p-2 bg-slate-100 mx-6 mt-6 rounded-2xl flex border border-slate-200">
+        <div className="p-1.5 bg-slate-100 mx-4 sm:mx-6 mt-5 rounded-2xl flex border border-slate-200 gap-1">
           <button
             type="button"
             onClick={() => {
               setActiveMode('student');
               setErrorMsg('');
             }}
-            className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 ${
               activeMode === 'student'
                 ? 'bg-white text-blue-700 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Users className="w-4 h-4" /> Masuk Siswa (TOKEN)
+            <Users className="w-3.5 h-3.5" /> User Siswa
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveMode('teacher');
+              setErrorMsg('');
+            }}
+            className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 ${
+              activeMode === 'teacher'
+                ? 'bg-white text-blue-700 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5" /> User Guru
           </button>
           <button
             type="button"
@@ -145,18 +198,18 @@ export const LoginView: React.FC<LoginViewProps> = ({
               setActiveMode('admin');
               setErrorMsg('');
             }}
-            className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+            className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 ${
               activeMode === 'admin'
                 ? 'bg-white text-blue-700 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Settings className="w-4 h-4" /> Panel Guru
+            <Settings className="w-3.5 h-3.5" /> Panel Guru
           </button>
         </div>
 
         {/* Form Body */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-4">
           {errorMsg && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs flex items-center gap-2 animate-fade-in">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
@@ -166,7 +219,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
           {activeMode === 'student' ? (
             /* Student Form with NIS & TOKEN */
-            <form onSubmit={handleStudentSubmit} className="space-y-4">
+            <form onSubmit={handleStudentSubmit} className="space-y-3.5">
               {/* Active Token Badge Helper */}
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs text-blue-800 font-medium">
@@ -178,7 +231,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1.5" htmlFor="nis">
+                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="nis">
                   NIS / No. Peserta Siswa
                 </label>
                 <div className="relative">
@@ -197,7 +250,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1.5" htmlFor="token">
+                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="token">
                   TOKEN Ujian Dari Guru
                 </label>
                 <div className="relative">
@@ -217,17 +270,125 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] text-sm mt-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] text-sm mt-2 cursor-pointer"
               >
-                <LogIn className="w-4 h-4" /> Masuk Ujian CBT
+                <LogIn className="w-4 h-4" /> Masuk Ujian CBT (Siswa)
+              </button>
+            </form>
+          ) : activeMode === 'teacher' ? (
+            /* Teacher Form with NIP, NAMA LENGKAP GURU, MATA PELAJARAN, & TOKEN */
+            <form onSubmit={handleTeacherSubmit} className="space-y-3">
+              {/* Active Token Badge Helper */}
+              <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-indigo-900 font-medium">
+                  <KeyRound className="w-4 h-4 text-indigo-600" /> Token Ujian Aktif:
+                </div>
+                <span className="bg-indigo-600 text-white font-mono font-black text-sm px-3 py-1 rounded-xl tracking-wider shadow-xs">
+                  {config.examToken || 'SOS2026'}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="teacherNip">
+                  NIP (Nomor Induk Pegawai)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="teacherNip"
+                    type="text"
+                    value={teacherNip}
+                    onChange={(e) => setTeacherNip(e.target.value)}
+                    placeholder="Contoh: 198501152010011002"
+                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="teacherNama">
+                  NAMA LENGKAP GURU
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <UserCheck className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="teacherNama"
+                    type="text"
+                    value={teacherNama}
+                    onChange={(e) => setTeacherNama(e.target.value)}
+                    placeholder="Contoh: Drs. Aji Sosiologi, M.Pd"
+                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="teacherMapel">
+                  MATA PELAJARAN
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="teacherMapel"
+                    type="text"
+                    value={teacherMapel}
+                    onChange={(e) => setTeacherMapel(e.target.value)}
+                    placeholder="Contoh: Sosiologi"
+                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="teacherToken">
+                  TOKEN Ujian
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <Key className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="teacherToken"
+                    type="text"
+                    value={teacherToken}
+                    onChange={(e) => setTeacherToken(e.target.value.toUpperCase())}
+                    placeholder="Masukkan TOKEN (misal: SOS2026)"
+                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm font-mono font-bold tracking-widest text-indigo-900 uppercase"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] text-sm mt-2 cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" /> Masuk Ujian CBT (Guru)
               </button>
             </form>
           ) : (
-            /* Admin Form */
-            <form onSubmit={handleAdminSubmit} className="space-y-4">
+            /* Admin / Guru Panel Form */
+            <form onSubmit={handleAdminSubmit} className="space-y-3.5">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-600">
+                <p className="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                  <Settings className="w-4 h-4 text-indigo-600" /> Akses Panel CBT:
+                </p>
+                <div className="flex justify-between items-center text-[11px] mt-1 bg-white p-2 rounded-xl border border-slate-100">
+                  <span>🔑 Admin System: <strong className="font-mono text-indigo-700">admin / admin</strong></span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] mt-1 bg-white p-2 rounded-xl border border-slate-100">
+                  <span>🎓 User Guru: <strong className="font-mono text-indigo-700">guru / guru</strong></span>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1.5" htmlFor="adminUser">
-                  Username Guru / Admin
+                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="adminUser">
+                  Username
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -238,15 +399,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     type="text"
                     value={adminUser}
                     onChange={(e) => setAdminUser(e.target.value)}
-                    placeholder="Username Admin"
-                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-sm font-semibold"
+                    placeholder="Masukkan Username (admin / guru)"
+                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm font-semibold"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1.5" htmlFor="adminPass">
-                  Password Admin
+                <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="adminPass">
+                  Password
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -257,71 +418,27 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     type="password"
                     value={adminPass}
                     onChange={(e) => setAdminPass(e.target.value)}
-                    placeholder="Password Admin"
-                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-sm font-semibold"
+                    placeholder="Masukkan Password"
+                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm font-semibold"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] text-sm mt-2"
+                className="w-full bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] text-sm mt-2 cursor-pointer"
               >
-                <LogIn className="w-4 h-4" /> Masuk Panel Guru
+                <LogIn className="w-4 h-4" /> Masuk Panel CBT
               </button>
             </form>
           )}
 
-          {/* Quick Autofill Helper Buttons */}
-          <div className="pt-3 border-t border-gray-100 space-y-2">
-            <p className="text-center text-[11px] text-gray-400 font-medium">Uji Coba Cepat (Autofill Akun Demo):</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveMode('student');
-                  const firstNis = config.students.length > 0 ? config.students[0].nis : '1001';
-                  handleQuickDemoStudent(firstNis);
-                }}
-                className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 border border-blue-200"
-              >
-                <Sparkles className="w-3.5 h-3.5" /> Siswa (NIS {config.students.length > 0 ? config.students[0].nis : '1001'})
-              </button>
-              <button
-                type="button"
-                onClick={handleQuickDemoAdmin}
-                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 border border-slate-300"
-              >
-                <Settings className="w-3.5 h-3.5" /> Panel Guru
-              </button>
-            </div>
-          </div>
-
-          {/* Download Aplikasi CBT Offline Banner */}
-          <div className="pt-3 border-t border-slate-100">
-            <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-3.5 shadow-md border border-slate-700">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg">
-                    <WifiOff className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="font-black text-xs text-white">Butuh Ujian Tanpa Kuota / Offline?</p>
-                    <p className="text-[10px] text-slate-300">Unduh file aplikasi standalone untuk siswa</p>
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => exportOfflineAppHtml(config)}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 font-black py-2 rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
-              >
-                <Download className="w-3.5 h-3.5" /> Unduh Aplikasi Offline (.html)
-              </button>
-            </div>
-          </div>
-
-          <p className="text-center text-[11px] text-gray-400">© 2026 @AJISOSIOLOGI - Secure CBT System</p>
+          <p className="text-center text-[11px] text-gray-400 border-t border-gray-100 pt-3">
+            <a href="https://lynk.id/ajisosiologi" target="_blank" rel="noopener noreferrer" className="hover:underline font-bold text-blue-600">
+              @ajisosiologi
+            </a>{' '}
+            - Secure CBT System
+          </p>
         </div>
       </div>
     </div>
