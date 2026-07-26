@@ -205,7 +205,7 @@ export const TestView: React.FC<TestViewProps> = ({
               <button
                 onClick={onPrev}
                 disabled={currentIndex === 0}
-                className="px-3.5 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-bold text-xs sm:text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 active:scale-95"
+                className="px-3.5 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-bold text-xs sm:text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 active:scale-95 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" /> <span className="hidden xs:inline">Sebelumnya</span>
               </button>
@@ -222,13 +222,22 @@ export const TestView: React.FC<TestViewProps> = ({
                 </span>
               </label>
 
-              <button
-                onClick={onNext}
-                disabled={currentIndex === questions.length - 1}
-                className="px-3.5 sm:px-5 py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 active:scale-95"
-              >
-                <span className="hidden xs:inline">Selanjutnya</span> <ChevronRight className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onNext}
+                  disabled={currentIndex === questions.length - 1}
+                  className="px-3.5 sm:px-5 py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 active:scale-95 cursor-pointer"
+                >
+                  <span className="hidden xs:inline">Selanjutnya</span> <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={onFinish}
+                  className="px-4 py-2 sm:py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center gap-1 active:scale-95 cursor-pointer"
+                  title="Selesaikan Ujian"
+                >
+                  <Flag className="w-4 h-4" /> Selesai
+                </button>
+              </div>
             </div>
           </div>
         </div>

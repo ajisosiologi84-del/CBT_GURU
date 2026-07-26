@@ -28,6 +28,7 @@ export default function App() {
             examToken: parsed.examToken || 'SOS2026',
             students: Array.isArray(parsed.students) ? parsed.students : defaultStudents,
             maxQuestionsToDisplay: typeof parsed.maxQuestionsToDisplay === 'number' ? parsed.maxQuestionsToDisplay : 0,
+            maxAttempts: typeof parsed.maxAttempts === 'number' && parsed.maxAttempts > 0 ? parsed.maxAttempts : 1,
             randomizeQuestions: parsed.randomizeQuestions !== false,
             randomizeOptions: parsed.randomizeOptions !== false,
           };
@@ -47,6 +48,7 @@ export default function App() {
         { id: 't2', nip: '198803202012022005', nama: 'Siti Rahmawati, S.Pd', mapel: 'Sosiologi' },
       ],
       maxQuestionsToDisplay: 0,
+      maxAttempts: 1,
       randomizeQuestions: true,
       randomizeOptions: true,
     };
@@ -167,6 +169,24 @@ export default function App() {
 
   // Start CBT Test Initialization
   const handleStartTest = () => {
+    const maxAttempts = config.maxAttempts || 1;
+    const studentAttemptsCount = studentResults.filter(
+      (r) => r.studentInfo.noPeserta.toLowerCase() === studentInfo.noPeserta.toLowerCase() ||
+             r.studentInfo.name.toLowerCase() === studentInfo.name.toLowerCase()
+    ).length;
+
+    if (studentAttemptsCount >= maxAttempts) {
+      showConfirm(
+        'Batas Maksimal Ujian Tercapai',
+        `Anda telah menyelesaikan ujian ini sebanyak ${studentAttemptsCount} kali (Batas maksimal: ${maxAttempts}x). Anda tidak dapat mengerjakan ujian ini lagi. Ingin kembali ke menu portal?`,
+        () => {
+          setViewState('login');
+        },
+        false
+      );
+      return;
+    }
+
     // Filter only active questions
     const activePool = config.questions.filter((q) => q.isActive !== false);
     if (activePool.length === 0) {
@@ -242,9 +262,30 @@ export default function App() {
   }, [viewState]);
 
   // Security & Anti-Cheat Handlers (Mobile & Desktop Compatible)
+  const playWarningSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.6);
+    } catch (e) {
+      console.warn('Audio warning sound not supported or blocked', e);
+    }
+  };
+
   const handleTriggerWarning = useCallback(
     (customMsg?: string) => {
       if (viewState !== 'test' || isWarningModalOpen) return;
+
+      playWarningSound();
 
       setWarnings((prev) => {
         const nextWarnings = prev + 1;
@@ -525,7 +566,13 @@ export default function App() {
         <PreTestView
           config={config}
           studentInfo={studentInfo}
+          studentAttemptsCount={studentResults.filter(
+            (r) => r.studentInfo.noPeserta.toLowerCase() === studentInfo.noPeserta.toLowerCase() ||
+                   r.studentInfo.name.toLowerCase() === studentInfo.name.toLowerCase()
+          ).length}
+          maxAttempts={config.maxAttempts || 1}
           onStartTest={handleStartTest}
+          onBackToPortal={() => setViewState('login')}
         />
       )}
 

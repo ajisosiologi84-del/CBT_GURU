@@ -83,6 +83,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [durationInput, setDurationInput] = useState<number>(config.duration);
   const [kkmInput, setKkmInput] = useState<number>(config.kkm);
   const [maxQuestionsInput, setMaxQuestionsInput] = useState<number>(config.maxQuestionsToDisplay ?? 0);
+  const [maxAttemptsInput, setMaxAttemptsInput] = useState<number>(config.maxAttempts ?? 1);
   const [randomizeQuestionsInput, setRandomizeQuestionsInput] = useState<boolean>(
     config.randomizeQuestions !== false
   );
@@ -259,6 +260,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         duration: durationInput,
         kkm: kkmInput,
         maxQuestionsToDisplay: Math.max(0, maxQuestionsInput),
+        maxAttempts: Math.max(1, maxAttemptsInput),
         randomizeQuestions: randomizeQuestionsInput,
         randomizeOptions: randomizeOptionsInput,
       });
@@ -1547,6 +1549,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </p>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                    Batas Maksimal Percobaan Ujian (Max Attempts)
+                  </label>
+                  <input
+                    type="number"
+                    value={maxAttemptsInput}
+                    onChange={(e) => setMaxAttemptsInput(parseInt(e.target.value) || 1)}
+                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-semibold"
+                    min="1"
+                    max="10"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Berapa kali siswa diizinkan mengerjakan ujian (dimulai dari angka 1).
+                  </p>
+                </div>
+
                 {/* Status Ringkasan Jumlah Soal */}
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1.5">
                   <div className="flex justify-between items-center text-slate-600">
@@ -1954,35 +1973,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </p>
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={handleDownloadStudentTemplate}
-                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" /> Template Excel Siswa
-                  </button>
+                {adminRole !== 'teacher' ? (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={handleDownloadStudentTemplate}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" /> Template Excel Siswa
+                    </button>
 
-                  <button
-                    onClick={() => studentFileInputRef.current?.click()}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  >
-                    <Upload className="w-4 h-4" /> Upload Excel Siswa
-                  </button>
-                  <input
-                    type="file"
-                    ref={studentFileInputRef}
-                    onChange={handleStudentExcelUpload}
-                    accept=".xls,.xlsx"
-                    className="hidden"
-                  />
+                    <button
+                      onClick={() => studentFileInputRef.current?.click()}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4" /> Upload Excel Siswa
+                    </button>
+                    <input
+                      type="file"
+                      ref={studentFileInputRef}
+                      onChange={handleStudentExcelUpload}
+                      accept=".xls,.xlsx"
+                      className="hidden"
+                    />
 
-                  <button
-                    onClick={() => setIsAddStudentModalOpen(true)}
-                    className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  >
-                    <UserPlus className="w-4 h-4" /> Tambah Siswa Manual
-                  </button>
-                </div>
+                    <button
+                      onClick={() => setIsAddStudentModalOpen(true)}
+                      className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <UserPlus className="w-4 h-4" /> Tambah Siswa Manual
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
+                    <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Mode User Guru: Penambahan & penghapusan akun siswa dikelola oleh Admin.</span>
+                  </div>
+                )}
               </div>
 
               {/* Table Area */}
@@ -2009,14 +2035,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <th className="p-3">NIS / No. Peserta</th>
                         <th className="p-3">Nama Lengkap Siswa</th>
                         <th className="p-3">Kelas</th>
-                        <th className="p-3 text-center">Aksi</th>
+                        {adminRole !== 'teacher' && <th className="p-3 text-center">Aksi</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-xs">
                       {filteredStudents.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="p-8 text-center text-gray-400 font-medium">
-                            Belum ada data siswa terdaftar. Klik button <b>Tambah Siswa Manual</b> atau <b>Upload Excel Siswa</b>.
+                          <td colSpan={adminRole !== 'teacher' ? 5 : 4} className="p-8 text-center text-gray-400 font-medium">
+                            Belum ada data siswa terdaftar.
                           </td>
                         </tr>
                       ) : (
@@ -2030,15 +2056,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 {s.kelas}
                               </span>
                             </td>
-                            <td className="p-3 text-center">
-                              <button
-                                onClick={() => handleDeleteStudent(s.id, s.nama)}
-                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                title="Hapus Siswa"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
+                            {adminRole !== 'teacher' && (
+                              <td className="p-3 text-center">
+                                <button
+                                  onClick={() => handleDeleteStudent(s.id, s.nama)}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Hapus Siswa"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}
@@ -2058,39 +2086,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <span className="text-indigo-600 font-black">{teachersList.length}</span>)
                   </h2>
                   <p className="text-xs text-gray-500 mt-1">
-                    Kelola daftar guru pengampu. Guru dapat login menggunakan <b>NIP</b>, <b>Nama Lengkap Guru</b>, <b>Mata Pelajaran</b>, dan <b>TOKEN Ujian</b>.
+                    Kelola daftar guru pengampu. Guru dapat login menggunakan <b>NIP</b> sebagai username & password.
                   </p>
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={handleDownloadTeacherTemplate}
-                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" /> Template Excel Guru
-                  </button>
+                {adminRole !== 'teacher' ? (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={handleDownloadTeacherTemplate}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" /> Template Excel Guru
+                    </button>
 
-                  <button
-                    onClick={() => teacherFileInputRef.current?.click()}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  >
-                    <Upload className="w-4 h-4" /> Upload Excel Guru
-                  </button>
-                  <input
-                    type="file"
-                    ref={teacherFileInputRef}
-                    onChange={handleTeacherExcelUpload}
-                    accept=".xls,.xlsx"
-                    className="hidden"
-                  />
+                    <button
+                      onClick={() => teacherFileInputRef.current?.click()}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4" /> Upload Excel Guru
+                    </button>
+                    <input
+                      type="file"
+                      ref={teacherFileInputRef}
+                      onChange={handleTeacherExcelUpload}
+                      accept=".xls,.xlsx"
+                      className="hidden"
+                    />
 
-                  <button
-                    onClick={() => setIsAddTeacherModalOpen(true)}
-                    className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-                  >
-                    <UserPlus className="w-4 h-4" /> Tambah Guru Manual
-                  </button>
-                </div>
+                    <button
+                      onClick={() => setIsAddTeacherModalOpen(true)}
+                      className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <UserPlus className="w-4 h-4" /> Tambah Guru Manual
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
+                    <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Mode User Guru: Penambahan & penghapusan akun guru dikelola oleh Admin.</span>
+                  </div>
+                )}
               </div>
 
               {/* Table Area */}
@@ -2117,14 +2152,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <th className="p-3">NIP (Nomor Induk Pegawai)</th>
                         <th className="p-3">Nama Lengkap Guru</th>
                         <th className="p-3">Mata Pelajaran</th>
-                        <th className="p-3 text-center">Aksi</th>
+                        {adminRole !== 'teacher' && <th className="p-3 text-center">Aksi</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-xs">
                       {filteredTeachers.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="p-8 text-center text-gray-400 font-medium">
-                            Belum ada data guru terdaftar. Klik button <b>Tambah Guru Manual</b> atau <b>Upload Excel Guru</b>.
+                          <td colSpan={adminRole !== 'teacher' ? 5 : 4} className="p-8 text-center text-gray-400 font-medium">
+                            Belum ada data guru terdaftar.
                           </td>
                         </tr>
                       ) : (
@@ -2138,15 +2173,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 {t.mapel}
                               </span>
                             </td>
-                            <td className="p-3 text-center">
-                              <button
-                                onClick={() => handleDeleteTeacher(t.id, t.nama)}
-                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                title="Hapus Guru"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
+                            {adminRole !== 'teacher' && (
+                              <td className="p-3 text-center">
+                                <button
+                                  onClick={() => handleDeleteTeacher(t.id, t.nama)}
+                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Hapus Guru"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}
@@ -2191,7 +2228,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <button
                   onClick={handleCopyToken}
-                  className="mt-4 inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-950 text-amber-300 font-bold px-4 py-2 rounded-xl text-xs transition-all border border-slate-700"
+                  className="mt-4 inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 active:bg-slate-950 text-amber-300 font-bold px-4 py-2 rounded-xl text-xs transition-all border border-slate-700 cursor-pointer"
                 >
                   {isCopiedToken ? (
                     <>
@@ -2227,7 +2264,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <button
                       type="button"
                       onClick={handleGenerateRandomToken}
-                      className="bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-800 font-bold px-4 rounded-xl text-xs flex items-center gap-1.5 transition-colors"
+                      className="bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-800 font-bold px-4 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                       title="Generate 6 Karakter Acak"
                     >
                       <RefreshCw className="w-4 h-4" /> Acak Token
@@ -2237,7 +2274,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <button
                   onClick={handleSaveToken}
-                  className="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-black py-3.5 rounded-xl transition-all shadow-md active:scale-95 text-sm"
+                  className="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-black py-3.5 rounded-xl transition-all shadow-md active:scale-95 text-sm cursor-pointer"
                 >
                   Simpan Token Ujian Baru
                 </button>
@@ -2252,6 +2289,94 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     Token ini bertindak sebagai kata sandi sesi ujian. Anda dapat mengganti token baru setiap pergantian jam ujian atau pergantian sesi kelas untuk mencegah siswa lain masuk di luar jam yang ditentukan.
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: BACKUP & SECURITY DATA */}
+      {activeTab === 'backup' && (
+        <div className="flex-1 overflow-y-auto p-6 max-w-4xl mx-auto w-full flex flex-col gap-6">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-slate-900 p-8 text-white relative overflow-hidden">
+              <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-3 shadow-inner border border-white/20">
+                <FolderArchive className="w-8 h-8 text-purple-200" />
+              </div>
+              <h2 className="text-2xl font-black">Backup & Security Data Aplikasi CBT GURUAI</h2>
+              <p className="text-purple-200 text-xs mt-1 font-medium">
+                Sistem keamanan tingkat lanjut untuk mencadangkan seluruh bank soal, data siswa & guru, pengaturan, dan rekap nilai ke perangkat lokal Anda.
+              </p>
+            </div>
+
+            <div className="p-8 space-y-6">
+              {/* Card 1: Backup JSON */}
+              <div className="bg-purple-50/70 border border-purple-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-purple-950 flex items-center gap-2">
+                    <FolderArchive className="w-4 h-4 text-purple-700" /> Unduh Backup Seluruh Data Aplikasi (JSON)
+                  </h3>
+                  <p className="text-xs text-purple-800 leading-relaxed">
+                    Menyimpan file cadangan (.json) berisi seluruh bank soal, konfigurasi ujian, data siswa, data guru, serta rekapitulasi nilai siswa. Sangat disarankan untuk diunduh secara berkala.
+                  </p>
+                </div>
+                <button
+                  onClick={handleBackupAppData}
+                  className="bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-bold px-5 py-3 rounded-xl text-xs transition-all shadow-md shrink-0 flex items-center gap-2 cursor-pointer"
+                >
+                  <Download className="w-4 h-4" /> Download Backup (.json)
+                </button>
+              </div>
+
+              {/* Card 2: Restore JSON */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" /> Pulihkan Data (Restore) Dari File Backup
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Mengembalikan seluruh data aplikasi (bank soal & siswa/guru) dari file backup (.json) yang sebelumnya pernah diunduh.
+                  </p>
+                </div>
+                <button
+                  onClick={() => backupFileInputRef.current?.click()}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-3 rounded-xl text-xs transition-all shadow-md shrink-0 flex items-center gap-2 cursor-pointer"
+                >
+                  <Upload className="w-4 h-4 text-emerald-400" /> Pilih File Backup (.json)
+                </button>
+                <input
+                  type="file"
+                  ref={backupFileInputRef}
+                  onChange={handleRestoreAppData}
+                  accept=".json"
+                  className="hidden"
+                />
+              </div>
+
+              {/* Card 3: Kop Surat & Signature Configuration */}
+              <div className="bg-sky-50/70 border border-sky-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm text-sky-950 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-sky-700" /> Pengaturan Kop Surat Sekolah & Tanda Tangan Guru
+                  </h3>
+                  <p className="text-xs text-sky-800 leading-relaxed">
+                    Atur nama sekolah, dinas pendidikan, alamat, kota, nama guru, NIP, serta nama kepala sekolah yang akan tercetak resmi di Laporan PDF & Excel.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsKopModalOpen(true)}
+                  className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-5 py-3 rounded-xl text-xs transition-all shadow-md shrink-0 flex items-center gap-2 cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4" /> Atur Kop & TTD
+                </button>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-xs text-emerald-900 leading-relaxed flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>
+                  <b>Keamanan & Privasi Guru:</b> Seluruh data Anda disimpan secara aman di browser lokal Anda dan dapat dicadangkan kapan saja tanpa risiko kehilangan data ujian.
+                </span>
               </div>
             </div>
           </div>
@@ -2880,6 +3005,181 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <Edit3 className="w-4 h-4" /> Edit Soal Ini
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PENGATURAN KOP SEKOLAH & TANDA TANGAN */}
+      {isKopModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 max-h-[90vh] flex flex-col">
+            <div className="bg-slate-900 text-white p-5 flex justify-between items-center shrink-0">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-sky-400" /> Atur Kop Surat & Tanda Tangan Laporan
+              </h3>
+              <button
+                onClick={() => setIsKopModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveKopSekolah} className="p-6 space-y-4 overflow-y-auto">
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Nama Dinas Pendidikan / Instansi
+                </label>
+                <input
+                  type="text"
+                  value={kopForm.dinas}
+                  onChange={(e) => setKopForm({ ...kopForm, dinas: e.target.value })}
+                  placeholder="Contoh: DINAS PENDIDIKAN PROVINSI DKI JAKARTA"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Nama Sekolah / Madrasah
+                </label>
+                <input
+                  type="text"
+                  value={kopForm.namaSekolah}
+                  onChange={(e) => setKopForm({ ...kopForm, namaSekolah: e.target.value })}
+                  placeholder="Contoh: SMA NEGERI 1 JAKARTA"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Alamat Sekolah
+                </label>
+                <input
+                  type="text"
+                  value={kopForm.alamat}
+                  onChange={(e) => setKopForm({ ...kopForm, alamat: e.target.value })}
+                  placeholder="Contoh: Jl. Budi Utomo No. 7, Jakarta Pusat"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Telepon / Email / Website
+                </label>
+                <input
+                  type="text"
+                  value={kopForm.teleponWeb}
+                  onChange={(e) => setKopForm({ ...kopForm, teleponWeb: e.target.value })}
+                  placeholder="Contoh: Telp: (021) 3865001 | Email: cbt@sman1jakarta.sch.id"
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                    Kota & Tanggal Laporan
+                  </label>
+                  <input
+                    type="text"
+                    value={kopForm.kotaTanggal}
+                    onChange={(e) => setKopForm({ ...kopForm, kotaTanggal: e.target.value })}
+                    placeholder="Contoh: Jakarta, 26 Juli 2026"
+                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                    Jabatan Guru
+                  </label>
+                  <input
+                    type="text"
+                    value={kopForm.jabatanGuru}
+                    onChange={(e) => setKopForm({ ...kopForm, jabatanGuru: e.target.value })}
+                    placeholder="Contoh: Guru Mata Pelajaran Sosiologi"
+                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                    Nama Lengkap Guru (Penandatangan)
+                  </label>
+                  <input
+                    type="text"
+                    value={kopForm.namaGuru}
+                    onChange={(e) => setKopForm({ ...kopForm, namaGuru: e.target.value })}
+                    placeholder="Contoh: Drs. Aji Sosiologi, M.Pd"
+                    required
+                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                    NIP Guru
+                  </label>
+                  <input
+                    type="text"
+                    value={kopForm.nipGuru}
+                    onChange={(e) => setKopForm({ ...kopForm, nipGuru: e.target.value })}
+                    placeholder="Contoh: 198501152010011002"
+                    required
+                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                    Nama Kepala Sekolah
+                  </label>
+                  <input
+                    type="text"
+                    value={kopForm.namaKepalaSekolah}
+                    onChange={(e) => setKopForm({ ...kopForm, namaKepalaSekolah: e.target.value })}
+                    placeholder="Contoh: Dr. H. Ahmad Sanusi, M.Si"
+                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                    NIP Kepala Sekolah
+                  </label>
+                  <input
+                    type="text"
+                    value={kopForm.nipKepalaSekolah}
+                    onChange={(e) => setKopForm({ ...kopForm, nipKepalaSekolah: e.target.value })}
+                    placeholder="Contoh: 197203101998021001"
+                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsKopModalOpen(false)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 rounded-xl text-xs transition-colors shadow-md cursor-pointer"
+                >
+                  Simpan Kop & TTD
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

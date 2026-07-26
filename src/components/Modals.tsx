@@ -18,27 +18,39 @@ export const WarningModal: React.FC<WarningModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const getWarningBadgeColor = (count: number) => {
+    if (count === 1) return 'bg-amber-100 text-amber-800 border-amber-300';
+    if (count === 2) return 'bg-orange-100 text-orange-800 border-orange-300';
+    return 'bg-red-100 text-red-800 border-red-300 animate-pulse';
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-2xl transform scale-100 transition-transform border border-red-100">
-        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center text-red-600 mx-auto mb-4 text-4xl shadow-inner">
-          <AlertTriangle className="w-10 h-10 text-red-600" />
+    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
+      <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl transform scale-100 transition-transform border-2 border-red-200 animate-bounce-subtle">
+        <div className="w-20 h-20 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 mx-auto mb-4 shadow-inner animate-pulse">
+          <AlertTriangle className="w-10 h-10 text-red-600 animate-spin-slow" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Peringatan Pelanggaran!</h2>
-        <p className="text-gray-600 mb-4 text-sm leading-relaxed">
-          {customMsg || "Sistem mendeteksi Anda meninggalkan layar ujian atau mencoba melakukan kecurangan. Ini adalah pelanggaran tata tertib."}
+        <div className="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider mb-2 bg-red-600 text-white shadow-sm animate-pulse">
+          Deteksi Kecurangan
+        </div>
+        <h2 className="text-2xl font-black text-gray-900 mb-2">Peringatan #{warningCount}</h2>
+        <p className="text-gray-600 mb-5 text-sm leading-relaxed font-medium">
+          {customMsg || "Sistem mendeteksi Anda meninggalkan layar ujian, berpindah tab, atau mencoba membuka aplikasi lain. Tindakan ini dicatat sebagai kecurangan."}
         </p>
-        <div className="bg-red-50 text-red-800 p-3 rounded-xl font-bold mb-6 border border-red-200 flex items-center justify-center gap-2">
-          <span>Peringatan ke-<span className="text-xl font-black text-red-600">{warningCount}</span> dari {maxWarnings}</span>
+        <div className={`p-3.5 rounded-2xl font-bold mb-5 border-2 flex items-center justify-center gap-2 ${getWarningBadgeColor(warningCount)}`}>
+          <AlertTriangle className="w-5 h-5 shrink-0" />
+          <span>Status Peringatan: <strong className="text-lg font-black">{warningCount}</strong> dari {maxWarnings} kali</span>
         </div>
-        <p className="text-xs text-gray-500 mb-6 italic">
-          Jika mencapai {maxWarnings} kali pelanggaran, ujian akan dihentikan secara otomatis.
+        <p className="text-xs text-slate-500 mb-6 font-semibold italic">
+          {warningCount >= 2 
+            ? '⚠️ PERINGATAN KERAS! Pelanggaran berikutnya akan otomatis menghentikan ujian.'
+            : `Harap tetap fokus pada halaman ujian sampai selesai.`}
         </p>
         <button
           onClick={onUnderstand}
-          className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
+          className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 px-4 rounded-2xl transition-all shadow-lg hover:shadow-xl active:scale-[0.98] cursor-pointer text-sm tracking-wide"
         >
-          Saya Mengerti, Kembali ke Ujian
+          Saya Mengerti, Kembali ke Ujian ({maxWarnings - warningCount} kesempatan tersisa)
         </button>
       </div>
     </div>

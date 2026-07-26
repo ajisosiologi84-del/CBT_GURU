@@ -53,6 +53,7 @@ export interface AppConfig {
   subTitle?: string; // e.g. 'Perubahan Sosial & Globalisasi'
   mapelList?: string[]; // Pilihan daftar mata pelajaran
   maxQuestionsToDisplay?: number; // Jumlah soal yang dikeluarkan/ditampilkan untuk ujian (0 = semua)
+  maxAttempts?: number; // Batas maksimal percobaan ujian (default 1)
   randomizeQuestions?: boolean; // Acak urutan soal (default true)
   randomizeOptions?: boolean; // Acak urutan pilihan A, B, C, D, E (default true)
   kopSekolah?: KopSekolahConfig; // Pengaturan Kop Sekolah & Tanda Tangan Guru
