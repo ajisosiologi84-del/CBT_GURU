@@ -66,6 +66,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
       return;
     }
 
+    if (foundStudent.isActive === false) {
+      triggerError(`Siswa ${foundStudent.nama} (${foundStudent.nis}) statusnya NONAKTIF UJIAN. Harap hubungi Guru pengampu untuk mengaktifkan status ujian Anda.`);
+      return;
+    }
+
     const currentMapelStr = `${config.mapel || 'Sosiologi'} (${config.mapelTitle || 'Assessment TKA 2026'})`;
 
     const studentInfo: StudentInfo = {

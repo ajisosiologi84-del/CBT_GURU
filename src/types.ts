@@ -19,6 +19,7 @@ export interface StudentUser {
   nis: string;
   nama: string;
   kelas: string;
+  isActive?: boolean; // Status aktif mengikuti ujian (default true)
 }
 
 export interface TeacherUser {

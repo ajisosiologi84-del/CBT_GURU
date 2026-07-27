@@ -472,6 +472,9 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       }
 
       if (found) {
+        if (found.isActive === false) {
+          return showError('Siswa ' + found.nama + ' (' + (found.nis || found.id) + ') statusnya NONAKTIF UJIAN. Harap hubungi Guru untuk mengaktifkan.');
+        }
         currentStudent = { name: found.nama, noPeserta: (found.nis || found.id || nis) + ' (' + (found.kelas || 'Siswa') + ')', mapel: (CONFIG.mapel || 'Sosiologi') + ' TKA 2026' };
       } else {
         currentStudent = { name: nis, noPeserta: 'NIS-' + nis + ' (Siswa Mandiri)', mapel: (CONFIG.mapel || 'Sosiologi') + ' TKA 2026' };

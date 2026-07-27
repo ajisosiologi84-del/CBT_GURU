@@ -144,6 +144,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newNama, setNewNama] = useState('');
   const [newKelas, setNewKelas] = useState('');
 
+  // Student Active Selection State
+  const [studentSelectMode, setStudentSelectMode] = useState<'class' | 'individual'>('class');
+  const [studentClassFilter, setStudentClassFilter] = useState<string>('ALL');
+  const [studentStatusFilter, setStudentStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+
   // Teacher Management State
   const [teacherSearch, setTeacherSearch] = useState('');
   const [isAddTeacherModalOpen, setIsAddTeacherModalOpen] = useState(false);
@@ -839,6 +845,95 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   };
 
+  // Derived Student Counts & Data
+  const uniqueClasses = Array.from(new Set(studentsList.map((s) => s.kelas))).filter(Boolean);
+  const activeStudentsCount = studentsList.filter((s) => s.isActive !== false).length;
+  const inactiveStudentsCount = studentsList.length - activeStudentsCount;
+
+  // --- STUDENT ACTIVE EXAM SELECTION HANDLERS ---
+  const handleToggleStudentActive = (id: string) => {
+    const updated = studentsList.map((s) => {
+      if (s.id === id) {
+        const currentActive = s.isActive !== false;
+        return { ...s, isActive: !currentActive };
+      }
+      return s;
+    });
+    onSaveConfig({ ...config, students: updated });
+  };
+
+  const handleSetClassActiveStatus = (kelasName: string, isActive: boolean, exclusivelyThisClass: boolean = false) => {
+    const updated = studentsList.map((s) => {
+      if (s.kelas === kelasName) {
+        return { ...s, isActive };
+      }
+      if (exclusivelyThisClass) {
+        return { ...s, isActive: false };
+      }
+      return s;
+    });
+    onSaveConfig({ ...config, students: updated });
+
+    if (exclusivelyThisClass) {
+      showAlert(`Hanya siswa di kelas "${kelasName}" yang DIAKTIFKAN UJIAN. Siswa kelas lainnya di-nonaktifkan.`);
+    } else {
+      showAlert(`Siswa di kelas "${kelasName}" berhasil di-${isActive ? 'aktifkan' : 'nonaktifkan'} untuk ujian.`);
+    }
+  };
+
+  const handleSetAllStudentsActive = (isActive: boolean) => {
+    const updated = studentsList.map((s) => ({ ...s, isActive }));
+    onSaveConfig({ ...config, students: updated });
+    showAlert(`Semua siswa (${studentsList.length}) berhasil di-${isActive ? 'aktifkan' : 'nonaktifkan'} untuk ujian.`);
+  };
+
+  const handleBatchSetStudentActive = (isActive: boolean) => {
+    if (selectedStudentIds.length === 0) {
+      showAlert('Pilih minimal satu siswa dari tabel terlebih dahulu!');
+      return;
+    }
+    const updated = studentsList.map((s) => {
+      if (selectedStudentIds.includes(s.id)) {
+        return { ...s, isActive };
+      }
+      return s;
+    });
+    onSaveConfig({ ...config, students: updated });
+    showAlert(`${selectedStudentIds.length} siswa terpilih berhasil di-${isActive ? 'aktifkan' : 'nonaktifkan'} untuk ujian.`);
+    setSelectedStudentIds([]);
+  };
+
+  const handleBatchDeleteStudents = () => {
+    if (selectedStudentIds.length === 0) return;
+    showConfirm(
+      'Hapus Siswa Terpilih?',
+      `Apakah Anda yakin ingin menghapus ${selectedStudentIds.length} siswa yang dicentang?`,
+      () => {
+        const updated = studentsList.filter((s) => !selectedStudentIds.includes(s.id));
+        onSaveConfig({ ...config, students: updated });
+        setSelectedStudentIds([]);
+        showAlert(`${selectedStudentIds.length} siswa berhasil dihapus.`);
+      },
+      true
+    );
+  };
+
+  const handleToggleSelectAllStudents = (currentFiltered: StudentUser[]) => {
+    if (selectedStudentIds.length === currentFiltered.length && currentFiltered.length > 0) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(currentFiltered.map((s) => s.id));
+    }
+  };
+
+  const handleToggleSelectOneStudent = (id: string) => {
+    if (selectedStudentIds.includes(id)) {
+      setSelectedStudentIds(selectedStudentIds.filter((item) => item !== id));
+    } else {
+      setSelectedStudentIds([...selectedStudentIds, id]);
+    }
+  };
+
   // --- TEACHER USER MANAGEMENT HANDLERS ---
   const handleDownloadTeacherTemplate = () => {
     const ws_data = [
@@ -967,12 +1062,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       r.studentInfo.noPeserta.toLowerCase().includes(rekapSearch.toLowerCase())
   );
 
-  const filteredStudents = studentsList.filter(
-    (s) =>
+  const filteredStudents = studentsList.filter((s) => {
+    const matchesSearch =
       s.nama.toLowerCase().includes(studentSearch.toLowerCase()) ||
       s.nis.toLowerCase().includes(studentSearch.toLowerCase()) ||
-      s.kelas.toLowerCase().includes(studentSearch.toLowerCase())
-  );
+      s.kelas.toLowerCase().includes(studentSearch.toLowerCase());
+
+    const matchesClass = studentClassFilter === 'ALL' || s.kelas === studentClassFilter;
+
+    const isStudentActive = s.isActive !== false;
+    const matchesStatus =
+      studentStatusFilter === 'ALL' ||
+      (studentStatusFilter === 'ACTIVE' && isStudentActive) ||
+      (studentStatusFilter === 'INACTIVE' && !isStudentActive);
+
+    return matchesSearch && matchesClass && matchesStatus;
+  });
 
   const filteredTeachers = teachersList.filter(
     (t) =>
@@ -2011,64 +2116,360 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 )}
               </div>
 
+              {/* MENU PENETAPAN SISWA AKTIF UJIAN */}
+              <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-blue-950 text-white p-5 sm:p-6 rounded-2xl shadow-lg border border-indigo-800 space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-indigo-800/80 pb-4">
+                  <div>
+                    <h3 className="font-black text-lg flex items-center gap-2 text-indigo-100">
+                      <UserCheck className="w-5 h-5 text-emerald-400" />
+                      Menu Pilih Siswa Mengikuti Ujian (Kondisi Aktif Ujian)
+                    </h3>
+                    <p className="text-xs text-indigo-200 mt-0.5">
+                      Pilih siswa berdasarkan <b>Kelas</b> atau <b>Nama Siswa</b>. Hanya siswa yang diset <b>Aktif Ujian</b> yang diizinkan masuk ke portal ujian.
+                    </p>
+                  </div>
+
+                  {/* Ringkasan Status Badge */}
+                  <div className="flex items-center gap-2 bg-slate-950/60 p-2 rounded-xl border border-indigo-700/50 shrink-0 text-xs flex-wrap">
+                    <div className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-bold rounded-lg border border-emerald-500/30 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Aktif Ujian: <strong>{activeStudentsCount}</strong> Siswa
+                    </div>
+                    <div className="px-2.5 py-1 bg-slate-800 text-slate-300 font-bold rounded-lg border border-slate-700">
+                      Nonaktif: <strong>{inactiveStudentsCount}</strong> Siswa
+                    </div>
+                    <div className="px-2.5 py-1 bg-indigo-500/20 text-indigo-200 font-bold rounded-lg border border-indigo-500/30">
+                      Total: <strong>{studentsList.length}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mode Selector & Global Quick Actions */}
+                <div className="flex flex-col md:flex-row gap-3 items-stretch justify-between">
+                  {/* Mode Tabs */}
+                  <div className="flex bg-slate-950/80 p-1 rounded-xl border border-indigo-700/60 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setStudentSelectMode('class')}
+                      className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                        studentSelectMode === 'class'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-indigo-300 hover:text-white'
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4" /> Pilih Berdasarkan Kelas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStudentSelectMode('individual')}
+                      className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                        studentSelectMode === 'individual'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-indigo-300 hover:text-white'
+                      }`}
+                    >
+                      <Users className="w-4 h-4" /> Pilih Berdasarkan Nama Siswa
+                    </button>
+                  </div>
+
+                  {/* Global Quick Actions */}
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleSetAllStudentsActive(true)}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" /> Aktifkan Semua Siswa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetAllStudentsActive(false)}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3.5 py-2 rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-red-400" /> Nonaktifkan Semua Siswa
+                    </button>
+                  </div>
+                </div>
+
+                {/* MODE 1: BERDASARKAN KELAS */}
+                {studentSelectMode === 'class' && (
+                  <div className="bg-slate-950/50 p-4 rounded-xl border border-indigo-800/80 space-y-3">
+                    <div className="text-xs font-bold text-indigo-200 flex items-center justify-between">
+                      <span>Pilih & Aktifkan Ujian Per Kelas:</span>
+                      <span className="text-[11px] text-indigo-300">
+                        Klik tombol untuk mengaktifkan seluruh siswa dalam kelas tertentu
+                      </span>
+                    </div>
+
+                    {uniqueClasses.length === 0 ? (
+                      <p className="text-xs text-indigo-300 italic">Belum ada data kelas terdaftar.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {uniqueClasses.map((kelasName) => {
+                          const studentsInClass = studentsList.filter((s) => s.kelas === kelasName);
+                          const activeInClass = studentsInClass.filter((s) => s.isActive !== false).length;
+                          const isAllActive = studentsInClass.length > 0 && activeInClass === studentsInClass.length;
+
+                          return (
+                            <div
+                              key={kelasName}
+                              className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between space-y-2.5 ${
+                                isAllActive
+                                  ? 'bg-emerald-950/40 border-emerald-500/40'
+                                  : activeInClass > 0
+                                  ? 'bg-amber-950/40 border-amber-500/40'
+                                  : 'bg-slate-900/60 border-slate-800'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-black text-sm text-white flex items-center gap-1.5">
+                                  <Building2 className="w-4 h-4 text-indigo-400" /> Kelas {kelasName}
+                                </span>
+                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                                  isAllActive
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    : activeInClass > 0
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                                }`}>
+                                  {activeInClass} / {studentsInClass.length} Aktif
+                                </span>
+                              </div>
+
+                              <div className="flex gap-1.5 flex-wrap pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetClassActiveStatus(kelasName, true, false)}
+                                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-2 rounded-lg text-[11px] transition text-center cursor-pointer active:scale-95"
+                                >
+                                  ✓ Aktifkan Kelas
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetClassActiveStatus(kelasName, false, false)}
+                                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-1.5 px-2 rounded-lg text-[11px] transition text-center cursor-pointer border border-slate-700 active:scale-95"
+                                >
+                                  ✕ Off
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetClassActiveStatus(kelasName, true, true)}
+                                  title="Hanya aktifkan siswa di kelas ini, dan nonaktifkan kelas lainnya"
+                                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-2 rounded-lg text-[11px] transition text-center cursor-pointer active:scale-95"
+                                >
+                                  ⚡ Hanya Kelas Ini
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* MODE 2: BERDASARKAN NAMA SISWA */}
+                {studentSelectMode === 'individual' && (
+                  <div className="bg-slate-950/50 p-4 rounded-xl border border-indigo-800/80 space-y-2">
+                    <p className="text-xs text-indigo-200">
+                      💡 <b>Petunjuk Pemilihan Nama Siswa:</b> Anda dapat mencari nama siswa atau menggunakan filter status di bawah ini, lalu centang siswa tertentu atau klik badge <b>Status Ujian (Aktif / Nonaktif)</b> pada tabel siswa untuk mengubah statusnya secara langsung.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Table Area */}
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex-1 flex flex-col">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-base text-gray-800">Daftar Siswa Terdaftar</h3>
-                  <div className="relative w-64">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex-1 flex flex-col space-y-4">
+                {/* Table Filters & Batch Operations Bar */}
+                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                    {/* Class Filter Dropdown */}
+                    <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs">
+                      <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="font-bold text-gray-600 text-[11px]">Kelas:</span>
+                      <select
+                        value={studentClassFilter}
+                        onChange={(e) => setStudentClassFilter(e.target.value)}
+                        className="font-bold text-gray-800 focus:outline-none bg-transparent cursor-pointer"
+                      >
+                        <option value="ALL">Semua Kelas ({uniqueClasses.length})</option>
+                        {uniqueClasses.map((k) => (
+                          <option key={k} value={k}>
+                            {k}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Status Filter Dropdown */}
+                    <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs">
+                      <UserCheck className="w-3.5 h-3.5 text-gray-400" />
+                      <span className="font-bold text-gray-600 text-[11px]">Status:</span>
+                      <select
+                        value={studentStatusFilter}
+                        onChange={(e) => setStudentStatusFilter(e.target.value as any)}
+                        className="font-bold text-gray-800 focus:outline-none bg-transparent cursor-pointer"
+                      >
+                        <option value="ALL">Semua Status</option>
+                        <option value="ACTIVE">🟢 Hanya Aktif Ujian</option>
+                        <option value="INACTIVE">🔴 Hanya Nonaktif</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="relative w-full lg:w-72">
                     <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
                     <input
                       type="text"
                       value={studentSearch}
                       onChange={(e) => setStudentSearch(e.target.value)}
-                      placeholder="Cari NIS / Nama / Kelas..."
-                      className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
+                      placeholder="Cari NIS / Nama Siswa / Kelas..."
+                      className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500 bg-white"
                     />
                   </div>
                 </div>
 
+                {/* Batch Action Toolbar when rows are checked */}
+                {selectedStudentIds.length > 0 && (
+                  <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 animate-fade-in">
+                    <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                      <CheckSquare className="w-4 h-4 text-indigo-600" />
+                      <strong>{selectedStudentIds.length}</strong> siswa dicentang:
+                    </span>
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                      <button
+                        type="button"
+                        onClick={() => handleBatchSetStudentActive(true)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" /> Set Aktif Ujian
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleBatchSetStudentActive(false)}
+                        className="bg-slate-700 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Set Nonaktif
+                      </button>
+                      {adminRole !== 'teacher' && (
+                        <button
+                          type="button"
+                          onClick={handleBatchDeleteStudents}
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Hapus Terpilih
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStudentIds([])}
+                        className="text-gray-500 hover:text-gray-800 text-[11px] font-semibold px-2 py-1 underline cursor-pointer"
+                      >
+                        Batal Pilihan
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Table Container */}
                 <div className="overflow-x-auto flex-1">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-gray-200 bg-slate-50 text-gray-600 text-[11px] font-bold uppercase tracking-wider">
-                        <th className="p-3">No</th>
+                        <th className="p-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={
+                              filteredStudents.length > 0 &&
+                              selectedStudentIds.length === filteredStudents.length
+                            }
+                            onChange={() => handleToggleSelectAllStudents(filteredStudents)}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4"
+                            title="Centang Semua"
+                          />
+                        </th>
+                        <th className="p-3 w-12">No</th>
                         <th className="p-3">NIS / No. Peserta</th>
                         <th className="p-3">Nama Lengkap Siswa</th>
                         <th className="p-3">Kelas</th>
+                        <th className="p-3 text-center">Status Ujian</th>
                         {adminRole !== 'teacher' && <th className="p-3 text-center">Aksi</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-xs">
                       {filteredStudents.length === 0 ? (
                         <tr>
-                          <td colSpan={adminRole !== 'teacher' ? 5 : 4} className="p-8 text-center text-gray-400 font-medium">
-                            Belum ada data siswa terdaftar.
+                          <td colSpan={adminRole !== 'teacher' ? 7 : 6} className="p-8 text-center text-gray-400 font-medium">
+                            Tidak ada data siswa yang cocok dengan filter.
                           </td>
                         </tr>
                       ) : (
-                        filteredStudents.map((s, idx) => (
-                          <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-3 font-medium text-gray-400">{idx + 1}</td>
-                            <td className="p-3 font-mono font-bold text-slate-800">{s.nis}</td>
-                            <td className="p-3 font-bold text-gray-900">{s.nama}</td>
-                            <td className="p-3">
-                              <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold text-[11px] border border-indigo-100">
-                                {s.kelas}
-                              </span>
-                            </td>
-                            {adminRole !== 'teacher' && (
+                        filteredStudents.map((s, idx) => {
+                          const isSelected = selectedStudentIds.includes(s.id);
+                          const isActive = s.isActive !== false;
+
+                          return (
+                            <tr
+                              key={s.id}
+                              className={`hover:bg-slate-50 transition-colors ${
+                                !isActive ? 'bg-slate-50/60 opacity-80' : ''
+                              }`}
+                            >
+                              <td className="p-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelectOneStudent(s.id)}
+                                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer w-4 h-4"
+                                />
+                              </td>
+                              <td className="p-3 font-medium text-gray-400">{idx + 1}</td>
+                              <td className="p-3 font-mono font-bold text-slate-800">{s.nis}</td>
+                              <td className="p-3 font-bold text-gray-900">{s.nama}</td>
+                              <td className="p-3">
+                                <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold text-[11px] border border-indigo-100">
+                                  {s.kelas}
+                                </span>
+                              </td>
                               <td className="p-3 text-center">
                                 <button
-                                  onClick={() => handleDeleteStudent(s.id, s.nama)}
-                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Hapus Siswa"
+                                  type="button"
+                                  onClick={() => handleToggleStudentActive(s.id)}
+                                  className={`px-3 py-1 rounded-full text-[11px] font-black border transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 ${
+                                    isActive
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                      : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
+                                  }`}
+                                  title="Klik untuk mengubah status aktif/nonaktif ujian"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  {isActive ? (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                      🟢 Aktif Ujian
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                                      🔴 Nonaktif
+                                    </>
+                                  )}
                                 </button>
                               </td>
-                            )}
-                          </tr>
-                        ))
+                              {adminRole !== 'teacher' && (
+                                <td className="p-3 text-center">
+                                  <button
+                                    onClick={() => handleDeleteStudent(s.id, s.nama)}
+                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Hapus Siswa"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
