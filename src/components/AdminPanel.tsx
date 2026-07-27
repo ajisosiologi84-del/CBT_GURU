@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { AppConfig, Question, StudentResult, StudentUser, TeacherUser, KopSekolahConfig } from '../types';
 import { decryptResult } from '../utils/crypto';
+import { formatQuestionText } from '../utils/questionFormatter';
 import { exportOfflineAppHtml } from '../utils/offlineExport';
 import { generateResultsPdfReport, generateIndividualStudentPdf, defaultKopSekolah } from '../utils/pdfGenerator';
 import * as XLSX from 'xlsx';
@@ -496,7 +497,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           if (qText && optA && optB && optC && key) {
             newQuestions.push({
               id: startId + idx,
-              question: qText,
+              question: formatQuestionText(String(qText)),
               explanation: exp,
               image: rowImg ? String(rowImg).trim() : undefined,
               mapel: rowMapel ? String(rowMapel).trim() : 'Sosiologi',
@@ -3335,7 +3336,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </p>
                 <div
                   className="text-base text-slate-900 font-semibold leading-relaxed overflow-x-auto"
-                  dangerouslySetInnerHTML={{ __html: previewQuestion.question }}
+                  dangerouslySetInnerHTML={{ __html: formatQuestionText(previewQuestion.question) }}
                 />
               </div>
 

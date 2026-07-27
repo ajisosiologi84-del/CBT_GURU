@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Question, Option } from '../types';
+import { formatQuestionText } from '../utils/questionFormatter';
 import { Edit3, PlusCircle, CheckCircle2, Save, X, Image as ImageIcon, Upload, Trash2, Table, Link as LinkIcon, FileImage, Eye, Sparkles } from 'lucide-react';
 
 interface QuestionEditorModalProps {
@@ -187,7 +188,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
 
     onSave({
       id: editingQuestion?.id,
-      question: trimmedQuestion,
+      question: formatQuestionText(trimmedQuestion),
       options,
       explanation: explanationText.trim() || 'Tidak ada pembahasan.',
       image: imageString.trim() || undefined,
@@ -445,7 +446,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
               </p>
               <div
                 className="text-base text-slate-900 font-semibold leading-relaxed overflow-x-auto"
-                dangerouslySetInnerHTML={{ __html: questionText || '<i class="text-slate-400">(Teks pertanyaan belum diisi)</i>' }}
+                dangerouslySetInnerHTML={{ __html: formatQuestionText(questionText) || '<i class="text-slate-400">(Teks pertanyaan belum diisi)</i>' }}
               />
             </div>
 

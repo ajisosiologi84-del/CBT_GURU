@@ -1,5 +1,6 @@
 import React from 'react';
 import { Question } from '../types';
+import { formatQuestionText } from '../utils/questionFormatter';
 import { CheckCircle2, XCircle, Microscope, LogOut, BookOpen } from 'lucide-react';
 
 interface ReviewViewProps {
@@ -85,7 +86,7 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ questions, answers, onEx
 
                 <div
                   className="text-gray-800 mb-6 font-medium text-base sm:text-lg leading-relaxed overflow-x-auto"
-                  dangerouslySetInnerHTML={{ __html: q.question }}
+                  dangerouslySetInnerHTML={{ __html: formatQuestionText(q.question) }}
                 />
 
                 <div className="bg-slate-50 rounded-xl p-4 mb-5 border border-slate-200 space-y-3">

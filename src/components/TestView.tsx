@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Question } from '../types';
+import { formatQuestionText } from '../utils/questionFormatter';
 import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X } from 'lucide-react';
 
 interface TestViewProps {
@@ -162,7 +163,7 @@ export const TestView: React.FC<TestViewProps> = ({
             {/* Question Text */}
             <div
               className="text-sm sm:text-base md:text-lg text-gray-800 mb-6 leading-relaxed font-medium overflow-x-auto"
-              dangerouslySetInnerHTML={{ __html: currentQuestion?.question || '' }}
+              dangerouslySetInnerHTML={{ __html: formatQuestionText(currentQuestion?.question) }}
             />
 
             {/* Answer Options */}

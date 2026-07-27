@@ -571,13 +571,36 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       });
     }
 
+    function formatQuestionText(text) {
+      if (!text) return '';
+      var formatted = String(text).trim();
+      formatted = formatted.replace(/\r\n/g, '\n');
+      if (!/<(?:p|br|div|li|tr|table)\b[^>]*>/i.test(formatted)) {
+        formatted = formatted.replace(/\n/g, '<br/>');
+      } else {
+        formatted = formatted.replace(/([^\n>])\n([^\n<])/g, '$1<br/>$2');
+      }
+      formatted = formatted.replace(/(?:<br\s*\/?>|\n|^|\s+)(\((?:[1-9]|1[0-9]|20|[a-eA-E]|[ivxIVX]{1,4})\))(?=\s+[^\s])/g, function(match, p1) {
+        return '<br/><span style="display:inline-block;font-weight:bold;color:#4338ca;font-family:monospace;margin-right:4px;margin-top:4px;">' + p1 + '</span>';
+      });
+      formatted = formatted.replace(/(?:<br\s*\/?>|\n|\.\s+|\s{2,})([1-9]\)|[1-9]\.)(?=\s+[A-Za-z0-9\("'])/g, function(match, p1) {
+        return '<br/><span style="display:inline-block;font-weight:bold;color:#4338ca;font-family:monospace;margin-right:4px;margin-top:4px;">' + p1 + '</span>';
+      });
+      var closingPrompts = ['Berdasarkan', 'Pernyataan yang', 'Pernyataan di atas', 'Dari pernyataan', 'Dari data', 'Dari tabel', 'Dari ilustrasi', 'Pasangan yang', 'Yang termasuk', 'Yang merupakan', 'Manakah dari', 'Berikut ini yang'];
+      closingPrompts.forEach(function(prompt) {
+        var regex = new RegExp('(?<=\\.|\\!|\\?|>|\\)|[a-zA-Z0-9])\\s+(' + prompt + '\\b)', 'g');
+        formatted = formatted.replace(regex, '<br/><br/><strong style="color:#0f172a;">$1</strong>');
+      });
+      return formatted.replace(/(?:<br\s*\/?>\s*){3,}/gi, '<br/><br/>');
+    }
+
     function renderQuestion() {
       if (!activeExamQuestions || activeExamQuestions.length === 0) return;
       const q = activeExamQuestions[activeQuestionIndex];
       qNumberBadge.textContent = 'Soal ' + (activeQuestionIndex + 1);
       qTotalBadge.textContent = 'Total ' + activeExamQuestions.length + ' Soal';
       var imgHtml = q.image ? '<div style="margin-bottom:16px;text-align:center;background:#f8fafc;padding:10px;border-radius:12px;border:1px solid #e2e8f0;"><img src="' + q.image + '" style="max-height:300px;max-width:100%;object-fit:contain;border-radius:8px;" alt="Gambar Soal" /></div>' : '';
-      questionText.innerHTML = imgHtml + q.question;
+      questionText.innerHTML = imgHtml + formatQuestionText(q.question);
 
       optionsContainer.innerHTML = '';
       q.options.forEach((opt) => {
