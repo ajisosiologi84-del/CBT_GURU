@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
-import { AppConfig, StudentInfo } from '../types';
-import { User, Key, LogIn, Settings, AlertCircle, KeyRound, Users, GraduationCap, BookOpen, UserCheck } from 'lucide-react';
+import { AppConfig, StudentInfo, StudentUser } from '../types';
+import { User, Key, LogIn, Settings, AlertCircle, KeyRound, Users, GraduationCap, BookOpen, UserCheck, FileUp, HelpCircle, CheckCircle2, Download, Sparkles, Building2 } from 'lucide-react';
 import { CbtLogo } from './CbtLogo';
 
 interface LoginViewProps {
   config: AppConfig;
   onStudentLoginSuccess: (studentInfo: StudentInfo) => void;
   onAdminLoginSuccess: (role: 'admin' | 'teacher') => void;
+  onSaveConfig?: (newConfig: AppConfig) => void;
+  showAlert?: (msg: string) => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({
   config,
   onStudentLoginSuccess,
   onAdminLoginSuccess,
+  onSaveConfig,
+  showAlert,
 }) => {
   const [activeMode, setActiveMode] = useState<'student' | 'admin'>('student');
   
@@ -20,22 +24,65 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [nis, setNis] = useState('');
   const [tokenInput, setTokenInput] = useState('');
 
+  // Self-Registration Fallback for unlisted NIS
+  const [unlistedNis, setUnlistedNis] = useState<string | null>(null);
+  const [customNama, setCustomNama] = useState('');
+  const [customKelas, setCustomKelas] = useState('');
+
   // Admin Login Fields
   const [adminUser, setAdminUser] = useState('');
   const [adminPass, setAdminPass] = useState('');
 
+  // Guidance / Help Modal
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [isShaking, setIsShaking] = useState(false);
 
   const triggerError = (msg: string) => {
     setErrorMsg(msg);
+    setSuccessMsg('');
     setIsShaking(true);
     setTimeout(() => setIsShaking(false), 500);
+  };
+
+  const handleImportConfigJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+
+        const restoredConfig = parsed.config || (parsed.questions ? parsed : null);
+        if (!restoredConfig || !Array.isArray(restoredConfig.questions)) {
+          triggerError('File backup JSON tidak memiliki struktur data Bank Soal yang valid!');
+          return;
+        }
+
+        if (onSaveConfig) {
+          onSaveConfig(restoredConfig);
+          setErrorMsg('');
+          setSuccessMsg(
+            `Paket Ujian "${restoredConfig.mapel || 'CBT'}" Berhasil Dimuat! Token Aktif: "${restoredConfig.examToken || 'SOS2026'}" (${restoredConfig.questions.length} Soal)`
+          );
+        }
+      } catch (err) {
+        console.error(err);
+        triggerError('Gagal membaca file JSON! Pastikan format file adalah JSON Paket CBT valid.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleStudentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setSuccessMsg('');
 
     const trimmedNis = nis.trim();
     const trimmedToken = tokenInput.trim().toUpperCase();
@@ -52,7 +99,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
 
     if (trimmedToken !== activeExamToken) {
-      triggerError(`TOKEN Ujian "${trimmedToken}" Salah atau Tidak Valid! Minta Token resmi kepada Guru.`);
+      triggerError(`TOKEN Ujian "${trimmedToken}" Salah atau Tidak Valid! Minta Token resmi kepada Guru (Token Aktif: ${activeExamToken}).`);
       return;
     }
 
@@ -62,7 +109,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
     );
 
     if (!foundStudent) {
-      triggerError(`NIS "${trimmedNis}" tidak terdaftar di Data Siswa. Harap hubungi Guru pengampu.`);
+      // NIS not listed, prompt student self-registration fallback
+      setUnlistedNis(trimmedNis);
       return;
     }
 
@@ -83,9 +131,45 @@ export const LoginView: React.FC<LoginViewProps> = ({
     onStudentLoginSuccess(studentInfo);
   };
 
+  const handleSelfRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customNama.trim()) {
+      triggerError('Harap masukkan Nama Lengkap Anda!');
+      return;
+    }
+
+    const newStudent: StudentUser = {
+      id: 'st_self_' + Date.now(),
+      nis: unlistedNis || '1001',
+      nama: customNama.trim(),
+      kelas: customKelas.trim() || 'Umum/Mandiri',
+      isActive: true,
+    };
+
+    // Save to config if possible
+    if (onSaveConfig) {
+      onSaveConfig({
+        ...config,
+        students: [...config.students, newStudent],
+      });
+    }
+
+    const currentMapelStr = `${config.mapel || 'Sosiologi'} (${config.mapelTitle || 'Assessment TKA 2026'})`;
+
+    const studentInfo: StudentInfo = {
+      name: newStudent.nama,
+      noPeserta: `${newStudent.nis} (${newStudent.kelas})`,
+      mapel: currentMapelStr,
+      role: 'student',
+    };
+
+    onStudentLoginSuccess(studentInfo);
+  };
+
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setSuccessMsg('');
 
     const u = adminUser.trim();
     const p = adminPass.trim();
@@ -117,25 +201,37 @@ export const LoginView: React.FC<LoginViewProps> = ({
   return (
     <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 fixed inset-0 z-50 p-3 sm:p-6 overflow-y-auto custom-scrollbar">
       <div
-        className={`bg-white rounded-3xl shadow-2xl w-full max-w-md my-auto overflow-hidden transition-transform duration-300 shrink-0 ${
+        className={`bg-white rounded-3xl shadow-2xl w-full max-w-md my-auto overflow-hidden transition-transform duration-300 shrink-0 border border-slate-100 ${
           isShaking ? 'animate-shake' : ''
         }`}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 p-6 text-center text-white relative overflow-hidden flex flex-col items-center justify-center">
           <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
-          <CbtLogo className="w-24 h-24 mb-2 drop-shadow-md" />
+          <CbtLogo className="w-20 h-20 mb-2 drop-shadow-md" />
           <h1 className="text-xl font-black tracking-tight">Portal CBT Mandiri</h1>
-          <p className="text-blue-200 text-xs mt-0.5 font-medium">Sosiologi - Assessment TKA SMA 2026</p>
+          <p className="text-blue-200 text-xs mt-0.5 font-medium">
+            {config.mapel || 'Sosiologi'} - {config.mapelTitle || 'Assessment TKA SMA 2026'}
+          </p>
+
+          {/* Import JSON Quick Bar */}
+          <div className="mt-3 inline-flex items-center gap-1.5 bg-indigo-950/70 border border-indigo-700/60 rounded-full px-3 py-1 text-[11px]">
+            <span className="text-indigo-200 font-medium">Token Aktif:</span>
+            <span className="font-mono font-bold text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/40">
+              {config.examToken || 'SOS2026'}
+            </span>
+          </div>
         </div>
 
         {/* Mode Selector Switcher */}
-        <div className="p-1.5 bg-slate-100 mx-4 sm:mx-6 mt-5 rounded-2xl flex border border-slate-200 gap-1">
+        <div className="p-1.5 bg-slate-100 mx-4 sm:mx-6 mt-4 rounded-2xl flex border border-slate-200 gap-1">
           <button
             type="button"
             onClick={() => {
               setActiveMode('student');
               setErrorMsg('');
+              setSuccessMsg('');
+              setUnlistedNis(null);
             }}
             className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 ${
               activeMode === 'student'
@@ -150,6 +246,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             onClick={() => {
               setActiveMode('admin');
               setErrorMsg('');
+              setSuccessMsg('');
             }}
             className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 ${
               activeMode === 'admin'
@@ -162,7 +259,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </div>
 
         {/* Form Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-5 sm:p-6 space-y-4">
           {errorMsg && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs flex items-center gap-2 animate-fade-in">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
@@ -170,7 +267,64 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </div>
           )}
 
-          {activeMode === 'student' ? (
+          {successMsg && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span className="font-bold">{successMsg}</span>
+            </div>
+          )}
+
+          {/* FALLBACK FORM FOR UNLISTED NIS */}
+          {unlistedNis ? (
+            <form onSubmit={handleSelfRegisterSubmit} className="space-y-3 bg-amber-50 p-4 rounded-2xl border border-amber-200 text-amber-900 animate-fade-in">
+              <div className="text-xs font-bold flex items-center gap-1.5 text-amber-900 border-b border-amber-200 pb-2">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                Registrasi Siswa Mandiri (NIS: {unlistedNis})
+              </div>
+              <p className="text-[11px] text-amber-800">
+                NIS <b>{unlistedNis}</b> belum ada di daftar. Masukkan Nama Lengkap Anda untuk langsung mengikuti ujian:
+              </p>
+
+              <div>
+                <label className="block text-gray-700 text-[11px] font-bold uppercase mb-1">Nama Lengkap Siswa</label>
+                <input
+                  type="text"
+                  required
+                  value={customNama}
+                  onChange={(e) => setCustomNama(e.target.value)}
+                  placeholder="Contoh: Muhammad Budi"
+                  className="w-full px-3 py-2 border border-amber-300 rounded-xl bg-white text-xs font-bold focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 text-[11px] font-bold uppercase mb-1">Kelas (Opsional)</label>
+                <input
+                  type="text"
+                  value={customKelas}
+                  onChange={(e) => setCustomKelas(e.target.value)}
+                  placeholder="Contoh: XII IPS 2"
+                  className="w-full px-3 py-2 border border-amber-300 rounded-xl bg-white text-xs font-bold focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setUnlistedNis(null)}
+                  className="flex-1 bg-white border border-amber-300 text-amber-900 font-bold py-2 rounded-xl text-xs hover:bg-amber-100 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-xl text-xs shadow-sm cursor-pointer"
+                >
+                  Masuk Ujian
+                </button>
+              </div>
+            </form>
+          ) : activeMode === 'student' ? (
             /* Student Form with NIS & TOKEN */
             <form onSubmit={handleStudentSubmit} className="space-y-3.5">
               <div>
@@ -205,7 +359,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     type="text"
                     value={tokenInput}
                     onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
-                    placeholder="Masukkan TOKEN (misal: SOS2026)"
+                    placeholder={`Masukkan TOKEN (misal: ${config.examToken || 'SOS2026'})`}
                     className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors text-sm font-mono font-bold tracking-widest text-blue-900 uppercase"
                   />
                 </div>
@@ -280,7 +434,30 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </form>
           )}
 
-          <p className="text-center text-[11px] text-gray-400 border-t border-gray-100 pt-3">
+          {/* Quick Import JSON Exam Package Bar */}
+          <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+            <label className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl p-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition active:scale-98">
+              <FileUp className="w-4 h-4 text-indigo-600" />
+              <span>Impor Paket Ujian / File Konfigurasi (.json)</span>
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportConfigJson}
+                className="hidden"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="text-[11px] font-semibold text-slate-500 hover:text-indigo-600 flex items-center justify-center gap-1 py-1 cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Panduan Sync Soal & Token di HP/Laptop Lain</span>
+            </button>
+          </div>
+
+          <p className="text-center text-[11px] text-gray-400 pt-1">
             <a href="https://lynk.id/ajisosiologi" target="_blank" rel="noopener noreferrer" className="hover:underline font-bold text-blue-600">
               @ajisosiologi
             </a>{' '}
@@ -288,6 +465,66 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </p>
         </div>
       </div>
+
+      {/* HELP / VERCEL MULTI-DEVICE GUIDANCE MODAL */}
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-fade-in max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-indigo-600" />
+                Panduan Sinkronisasi Ujian di Berbagai Perangkat
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowHelpModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-700 space-y-3 leading-relaxed">
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl">
+                <p className="font-bold text-blue-900 mb-1">💡 Mengapa Token / Soal Terbaru Belum Muncul di Perangkat Siswa?</p>
+                <p>
+                  Aplikasi CBT ini adalah <b>Aplikasi CBT Standalone Berbasis Browser</b>. Seluruh data disimpan dengan aman di peramban (browser) lokal masing-masing perangkat.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="font-bold text-slate-900">Cara Menghubungkan Perangkat Siswa / HP Pengawas:</p>
+                <ol className="list-decimal pl-4 space-y-1.5 text-slate-600">
+                  <li>
+                    <b>Langkah 1 (Guru):</b> Buka <b>Panel Guru</b> → Klik tombol <b>"Backup Data (.json)"</b> di menu Pengaturan.
+                  </li>
+                  <li>
+                    <b>Langkah 2 (Siswa/Pengawas):</b> Pada HP/Laptop yang akan digunakan ujian, klik tombol <b>"Impor Paket Ujian / File Konfigurasi (.json)"</b> di halaman Login ini, lalu pilih file backup JSON tadi.
+                  </li>
+                  <li>
+                    <b>Atau Gunakan File HTML Standalone:</b> Di Panel Guru, klik <b>"Ekspor Aplikasi CBT Offline (Single HTML)"</b>. File HTML ini bisa dibagikan langsung lewat WhatsApp / USB drive ke siswa dan bisa dibuka secara offline tanpa perlu server internet!
+                  </li>
+                </ol>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-900 font-medium">
+                ✅ <b>Fitur Auto-Registrasi Siswa:</b> Jika Token Ujian sudah benar, siswa yang NIS-nya belum sempat didaftarkan Guru tetap dapat masuk secara otomatis dengan mengisi Nama Lengkap.
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowHelpModal(false)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+              >
+                Mengerti & Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
