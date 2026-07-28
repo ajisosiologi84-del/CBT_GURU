@@ -441,7 +441,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
             <label className="bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl p-2.5 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition active:scale-98">
               <FileUp className="w-4 h-4 text-indigo-600" />
-              <span>Impor Paket Ujian / File Konfigurasi (.json)</span>
+              <span>Impor Paket Ujian</span>
               <input
                 type="file"
                 accept=".json"
@@ -499,13 +499,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <p className="font-bold text-slate-900">Cara Menghubungkan Perangkat Siswa / HP Pengawas:</p>
                 <ol className="list-decimal pl-4 space-y-1.5 text-slate-600">
                   <li>
-                    <b>Langkah 1 (Guru):</b> Buka <b>Panel Guru</b> → Klik tombol <b>"Backup Data (.json)"</b> di menu Pengaturan.
+                    <b>Langkah 1 (Guru):</b> Buka <b>Panel Guru</b> → Klik tombol <b>"Paket Soal (.json)"</b> atau <b>"Backup Data (.json)"</b>.
                   </li>
                   <li>
-                    <b>Langkah 2 (Siswa/Pengawas):</b> Pada HP/Laptop yang akan digunakan ujian, klik tombol <b>"Impor Paket Ujian / File Konfigurasi (.json)"</b> di halaman Login ini, lalu pilih file backup JSON tadi.
-                  </li>
-                  <li>
-                    <b>Atau Gunakan File HTML Standalone:</b> Di Panel Guru, klik <b>"Ekspor Aplikasi CBT Offline (Single HTML)"</b>. File HTML ini bisa dibagikan langsung lewat WhatsApp / USB drive ke siswa dan bisa dibuka secara offline tanpa perlu server internet!
+                    <b>Langkah 2 (Siswa/Pengawas):</b> Pada HP/Laptop yang akan digunakan ujian, klik tombol <b>"Impor Paket Ujian"</b> di halaman Login ini, lalu pilih file JSON tersebut.
                   </li>
                 </ol>
               </div>

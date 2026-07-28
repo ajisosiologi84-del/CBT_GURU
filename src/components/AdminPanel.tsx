@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { AppConfig, Question, StudentResult, StudentUser, TeacherUser, KopSekolahConfig } from '../types';
 import { decryptResult, encryptAppBackup, decryptAppBackup } from '../utils/crypto';
 import { formatQuestionText } from '../utils/questionFormatter';
-import { exportOfflineAppHtml } from '../utils/offlineExport';
 import { generateResultsPdfReport, generateIndividualStudentPdf, defaultKopSekolah } from '../utils/pdfGenerator';
 import * as XLSX from 'xlsx';
 import {
@@ -1390,17 +1389,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </button>
 
                 <button
-                  onClick={() => {
-                    exportOfflineAppHtml(config);
-                    setIsSidebarOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-800/90 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all border border-slate-700/60 shadow-xs cursor-pointer"
-                >
-                  <Download className="w-4 h-4 shrink-0" />
-                  <span>App Offline (.html)</span>
-                </button>
-
-                <button
                   onClick={onLogout}
                   className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-800/90 text-red-400 hover:bg-red-600 hover:text-white transition-all border border-slate-700/60 shadow-xs"
                 >
@@ -1471,14 +1459,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               title="Unduh Paket Soal Aktif (.json)"
             >
               <FileJson className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Paket Soal (.json)</span>
-            </button>
-
-            <button
-              onClick={() => exportOfflineAppHtml(config)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs shadow-xs active:scale-95 cursor-pointer"
-              title="Unduh file aplikasi standalone offline (.html)"
-            >
-              <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">App Offline (.html)</span>
             </button>
 
             <button

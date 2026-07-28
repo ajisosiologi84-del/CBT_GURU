@@ -90,8 +90,10 @@ export async function loadConfigFromFirebase(): Promise<AppConfig | null> {
  * Subscribe to real-time updates for AppConfig from Firestore
  */
 export function subscribeConfigFromFirebase(onUpdate: (config: AppConfig) => void): () => void {
+  if (isQuotaExceeded) return () => {};
   const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID);
-  return onSnapshot(docRef, (snap) => {
+  let unsubscribe: () => void = () => {};
+  unsubscribe = onSnapshot(docRef, (snap) => {
     if (snap.exists()) {
       const data = snap.data() as AppConfig;
       if (data && data.questions) {
@@ -100,7 +102,17 @@ export function subscribeConfigFromFirebase(onUpdate: (config: AppConfig) => voi
     }
   }, (err) => {
     handleFirestoreError('subscribeConfig', err);
+    if (err?.code === 'resource-exhausted' || err?.message?.includes('Quota limit exceeded')) {
+      try {
+        if (unsubscribe) unsubscribe();
+      } catch (e) {}
+    }
   });
+  return () => {
+    try {
+      if (unsubscribe) unsubscribe();
+    } catch (e) {}
+  };
 }
 
 /**
@@ -159,7 +171,9 @@ export async function deleteSelectedStudentResultsFromFirebase(idsToDelete: stri
  * Subscribe to real-time student results
  */
 export function subscribeStudentResultsFromFirebase(onUpdate: (results: StudentResult[]) => void): () => void {
-  return onSnapshot(collection(db, RESULTS_COLLECTION), (querySnap) => {
+  if (isQuotaExceeded) return () => {};
+  let unsubscribe: () => void = () => {};
+  unsubscribe = onSnapshot(collection(db, RESULTS_COLLECTION), (querySnap) => {
     const list: StudentResult[] = [];
     querySnap.forEach((docSnap) => {
       list.push(docSnap.data() as StudentResult);
@@ -167,34 +181,47 @@ export function subscribeStudentResultsFromFirebase(onUpdate: (results: StudentR
     onUpdate(list);
   }, (err) => {
     handleFirestoreError('subscribeStudentResults', err);
+    if (err?.code === 'resource-exhausted' || err?.message?.includes('Quota limit exceeded')) {
+      try {
+        if (unsubscribe) unsubscribe();
+      } catch (e) {}
+    }
   });
+  return () => {
+    try {
+      if (unsubscribe) unsubscribe();
+    } catch (e) {}
+  };
 }
 
 /**
  * Teacher accounts management in Firestore
  */
 export async function saveTeacherToFirebase(teacher: TeacherUser): Promise<boolean> {
+  if (isQuotaExceeded) return false;
   try {
     const docRef = doc(db, TEACHERS_COLLECTION, teacher.id);
     await setDoc(docRef, teacher, { merge: true });
     return true;
   } catch (error) {
-    console.error('Error saving teacher account to Firebase:', error);
+    handleFirestoreError('saveTeacher', error);
     return false;
   }
 }
 
 export async function deleteTeacherFromFirebase(teacherId: string): Promise<boolean> {
+  if (isQuotaExceeded) return false;
   try {
     await deleteDoc(doc(db, TEACHERS_COLLECTION, teacherId));
     return true;
   } catch (error) {
-    console.error('Error deleting teacher account from Firebase:', error);
+    handleFirestoreError('deleteTeacher', error);
     return false;
   }
 }
 
 export async function loadTeachersFromFirebase(): Promise<TeacherUser[]> {
+  if (isQuotaExceeded) return [];
   try {
     const querySnap = await getDocs(collection(db, TEACHERS_COLLECTION));
     const list: TeacherUser[] = [];
@@ -203,7 +230,7 @@ export async function loadTeachersFromFirebase(): Promise<TeacherUser[]> {
     });
     return list;
   } catch (error) {
-    console.error('Error loading teachers from Firebase:', error);
+    handleFirestoreError('loadTeachers', error);
     return [];
   }
 }
