@@ -181,7 +181,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
       return;
     }
 
-    if (uLower === 'admin' && p === 'admin') {
+    const targetAdminUser = (config.adminUsername || 'admincbt').trim().toLowerCase();
+    const targetAdminPass = (config.adminPassword || 'JuniorCBT2026').trim();
+
+    if ((uLower === targetAdminUser || uLower === 'admincbt') && (p === targetAdminPass || p === 'JuniorCBT2026')) {
       onAdminLoginSuccess('admin');
       return;
     }
@@ -193,7 +196,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
     // Check if u and p match any teacher's NIP in config.teachers
     const foundTeacher = (config.teachers || []).find(
-      (t) => t.nip.trim() === u && (t.nip.trim() === p || p === 'guru' || p === 'admin')
+      (t) => t.nip.trim() === u && (t.nip.trim() === p || p === 'guru')
     );
 
     if (foundTeacher) {

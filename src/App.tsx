@@ -39,6 +39,8 @@ export default function App() {
             maxAttempts: typeof parsed.maxAttempts === 'number' && parsed.maxAttempts > 0 ? parsed.maxAttempts : 1,
             randomizeQuestions: parsed.randomizeQuestions !== false,
             randomizeOptions: parsed.randomizeOptions !== false,
+            adminUsername: parsed.adminUsername || 'admincbt',
+            adminPassword: parsed.adminPassword || 'JuniorCBT2026',
           };
         }
       }
@@ -59,6 +61,8 @@ export default function App() {
       maxAttempts: 1,
       randomizeQuestions: true,
       randomizeOptions: true,
+      adminUsername: 'admincbt',
+      adminPassword: 'JuniorCBT2026',
     };
   });
 

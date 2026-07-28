@@ -58,6 +58,8 @@ export interface AppConfig {
   randomizeQuestions?: boolean; // Acak urutan soal (default true)
   randomizeOptions?: boolean; // Acak urutan pilihan A, B, C, D, E (default true)
   kopSekolah?: KopSekolahConfig; // Pengaturan Kop Sekolah & Tanda Tangan Guru
+  adminUsername?: string; // Username Admin Utama (default: 'admincbt')
+  adminPassword?: string; // Password Admin Utama (default: 'JuniorCBT2026')
 }
 
 export type ViewState = 'login' | 'admin' | 'pre-test' | 'test' | 'result' | 'review';
