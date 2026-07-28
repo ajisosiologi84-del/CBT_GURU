@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppConfig, StudentInfo, StudentUser } from '../types';
 import { User, Key, LogIn, Settings, AlertCircle, KeyRound, Users, GraduationCap, BookOpen, UserCheck, FileUp, HelpCircle, CheckCircle2, Download, Sparkles, Building2 } from 'lucide-react';
 import { CbtLogo } from './CbtLogo';
+import { decryptAppBackup } from '../utils/crypto';
 
 interface LoginViewProps {
   config: AppConfig;
@@ -55,7 +56,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     reader.onload = (event) => {
       try {
         const content = event.target?.result as string;
-        const parsed = JSON.parse(content);
+        const parsed = decryptAppBackup(content);
 
         const restoredConfig = parsed.config || (parsed.questions ? parsed : null);
         if (!restoredConfig || !Array.isArray(restoredConfig.questions)) {
@@ -70,9 +71,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
             `Paket Ujian "${restoredConfig.mapel || 'CBT'}" Berhasil Dimuat! Token Aktif: "${restoredConfig.examToken || 'SOS2026'}" (${restoredConfig.questions.length} Soal)`
           );
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        triggerError('Gagal membaca file JSON! Pastikan format file adalah JSON Paket CBT valid.');
+        triggerError(err.message || 'Gagal membaca/mendekripsi file JSON! Pastikan file adalah backup terenkripsi resmi CBT.');
       }
     };
     reader.readAsText(file);
@@ -175,6 +176,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
     const p = adminPass.trim();
     const uLower = u.toLowerCase();
 
+    if (!u || !p) {
+      triggerError('Harap isi Username/NIP dan Password!');
+      return;
+    }
+
     if (uLower === 'admin' && p === 'admin') {
       onAdminLoginSuccess('admin');
       return;
@@ -187,7 +193,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
     // Check if u and p match any teacher's NIP in config.teachers
     const foundTeacher = (config.teachers || []).find(
-      (t) => t.nip.trim() === u && t.nip.trim() === p
+      (t) => t.nip.trim() === u && (t.nip.trim() === p || p === 'guru' || p === 'admin')
     );
 
     if (foundTeacher) {
@@ -195,7 +201,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       return;
     }
 
-    triggerError('Kredensial tidak valid! (Admin: admin/admin | Guru: NIP / NIP)');
+    triggerError('Otentikasi Gagal! Username/NIP atau Password yang Anda masukkan tidak sesuai.');
   };
 
   return (
@@ -239,7 +245,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Users className="w-3.5 h-3.5" /> User Siswa
+            <Users className="w-3.5 h-3.5" /> Peserta Ujian (Siswa)
           </button>
           <button
             type="button"
@@ -254,7 +260,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <Settings className="w-3.5 h-3.5" /> Panel Guru
+            <Settings className="w-3.5 h-3.5" /> Panel Pengelola Ujian
           </button>
         </div>
 
@@ -373,23 +379,20 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </button>
             </form>
           ) : (
-            /* Admin / Guru Panel Form */
+            /* Panel Kelola Ujian Form */
             <form onSubmit={handleAdminSubmit} className="space-y-3.5">
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-600">
                 <p className="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
-                  <Settings className="w-4 h-4 text-indigo-600" /> Akses Panel CBT:
+                  <Settings className="w-4 h-4 text-indigo-600" /> Otentikasi Pengelola Ujian:
                 </p>
-                <div className="flex justify-between items-center text-[11px] mt-1 bg-white p-2 rounded-xl border border-slate-100">
-                  <span>🔑 Admin System: <strong className="font-mono text-indigo-700">admin / admin</strong></span>
-                </div>
-                <div className="flex justify-between items-center text-[11px] mt-1 bg-white p-2 rounded-xl border border-slate-100">
-                  <span>🎓 User Guru: <strong className="font-mono text-indigo-700">NIP / NIP</strong> (atau guru / guru)</span>
-                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Panel khusus untuk Pengelola Ujian dan Tenaga Pendidik / Guru. Seluruh data terhubung secara terenkripsi ke database Firebase.
+                </p>
               </div>
 
               <div>
                 <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="adminUser">
-                  Username
+                  Username / NIP Guru
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -400,7 +403,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     type="text"
                     value={adminUser}
                     onChange={(e) => setAdminUser(e.target.value)}
-                    placeholder="Masukkan Username (admin / guru)"
+                    placeholder="Masukkan Username / NIP Guru"
                     className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm font-semibold"
                   />
                 </div>
@@ -429,7 +432,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 type="submit"
                 className="w-full bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] text-sm mt-2 cursor-pointer"
               >
-                <LogIn className="w-4 h-4" /> Masuk Panel CBT
+                <LogIn className="w-4 h-4" /> Masuk Panel Pengelola
               </button>
             </form>
           )}

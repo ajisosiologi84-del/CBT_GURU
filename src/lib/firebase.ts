@@ -1,0 +1,209 @@
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+  collection,
+  getDocs,
+  deleteDoc,
+  writeBatch
+} from 'firebase/firestore';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  User as FirebaseUser
+} from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
+import { AppConfig, StudentResult, TeacherUser } from '../types';
+
+// Initialize Firebase App
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// Database instance (using custom firestoreDatabaseId if specified)
+export const db = firebaseConfig.firestoreDatabaseId
+  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(app);
+
+// Auth instance
+export const auth = getAuth(app);
+
+const CONFIG_DOC_ID = 'main';
+const CONFIG_COLLECTION = 'cbt_config';
+const RESULTS_COLLECTION = 'student_results';
+const TEACHERS_COLLECTION = 'teacher_accounts';
+
+let isQuotaExceeded = false;
+
+function handleFirestoreError(context: string, error: any) {
+  if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+    if (!isQuotaExceeded) {
+      isQuotaExceeded = true;
+      console.warn(`[Firebase Firestore] Quota harian tercapai (${context}). Aplikasi beralih ke mode penyimpanan lokal (LocalStorage).`);
+    }
+  } else {
+    console.warn(`[Firebase Firestore] Notice (${context}):`, error?.message || error);
+  }
+}
+
+/**
+ * Save / sync the active CBT AppConfig to Firestore
+ */
+export async function saveConfigToFirebase(config: AppConfig): Promise<boolean> {
+  if (isQuotaExceeded) return false;
+  try {
+    const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID);
+    await setDoc(docRef, {
+      ...config,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    return true;
+  } catch (error) {
+    handleFirestoreError('saveConfig', error);
+    return false;
+  }
+}
+
+/**
+ * Fetch CBT AppConfig from Firestore
+ */
+export async function loadConfigFromFirebase(): Promise<AppConfig | null> {
+  if (isQuotaExceeded) return null;
+  try {
+    const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as AppConfig;
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError('loadConfig', error);
+    return null;
+  }
+}
+
+/**
+ * Subscribe to real-time updates for AppConfig from Firestore
+ */
+export function subscribeConfigFromFirebase(onUpdate: (config: AppConfig) => void): () => void {
+  const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID);
+  return onSnapshot(docRef, (snap) => {
+    if (snap.exists()) {
+      const data = snap.data() as AppConfig;
+      if (data && data.questions) {
+        onUpdate(data);
+      }
+    }
+  }, (err) => {
+    handleFirestoreError('subscribeConfig', err);
+  });
+}
+
+/**
+ * Save a student exam result to Firestore
+ */
+export async function saveStudentResultToFirebase(result: StudentResult): Promise<boolean> {
+  if (isQuotaExceeded) return false;
+  try {
+    const docRef = doc(db, RESULTS_COLLECTION, result.id);
+    await setDoc(docRef, result, { merge: true });
+    return true;
+  } catch (error) {
+    handleFirestoreError('saveStudentResult', error);
+    return false;
+  }
+}
+
+/**
+ * Load all student exam results from Firestore
+ */
+export async function loadStudentResultsFromFirebase(): Promise<StudentResult[]> {
+  if (isQuotaExceeded) return [];
+  try {
+    const querySnap = await getDocs(collection(db, RESULTS_COLLECTION));
+    const list: StudentResult[] = [];
+    querySnap.forEach((docSnap) => {
+      list.push(docSnap.data() as StudentResult);
+    });
+    return list;
+  } catch (error) {
+    handleFirestoreError('loadStudentResults', error);
+    return [];
+  }
+}
+
+/**
+ * Delete a batch of student result IDs from Firestore
+ */
+export async function deleteSelectedStudentResultsFromFirebase(idsToDelete: string[]): Promise<boolean> {
+  if (isQuotaExceeded || !idsToDelete || idsToDelete.length === 0) return false;
+  try {
+    const batch = writeBatch(db);
+    idsToDelete.forEach((id) => {
+      const docRef = doc(db, RESULTS_COLLECTION, id);
+      batch.delete(docRef);
+    });
+    await batch.commit();
+    return true;
+  } catch (error) {
+    handleFirestoreError('deleteSelectedStudentResults', error);
+    return false;
+  }
+}
+
+/**
+ * Subscribe to real-time student results
+ */
+export function subscribeStudentResultsFromFirebase(onUpdate: (results: StudentResult[]) => void): () => void {
+  return onSnapshot(collection(db, RESULTS_COLLECTION), (querySnap) => {
+    const list: StudentResult[] = [];
+    querySnap.forEach((docSnap) => {
+      list.push(docSnap.data() as StudentResult);
+    });
+    onUpdate(list);
+  }, (err) => {
+    handleFirestoreError('subscribeStudentResults', err);
+  });
+}
+
+/**
+ * Teacher accounts management in Firestore
+ */
+export async function saveTeacherToFirebase(teacher: TeacherUser): Promise<boolean> {
+  try {
+    const docRef = doc(db, TEACHERS_COLLECTION, teacher.id);
+    await setDoc(docRef, teacher, { merge: true });
+    return true;
+  } catch (error) {
+    console.error('Error saving teacher account to Firebase:', error);
+    return false;
+  }
+}
+
+export async function deleteTeacherFromFirebase(teacherId: string): Promise<boolean> {
+  try {
+    await deleteDoc(doc(db, TEACHERS_COLLECTION, teacherId));
+    return true;
+  } catch (error) {
+    console.error('Error deleting teacher account from Firebase:', error);
+    return false;
+  }
+}
+
+export async function loadTeachersFromFirebase(): Promise<TeacherUser[]> {
+  try {
+    const querySnap = await getDocs(collection(db, TEACHERS_COLLECTION));
+    const list: TeacherUser[] = [];
+    querySnap.forEach((docSnap) => {
+      list.push(docSnap.data() as TeacherUser);
+    });
+    return list;
+  } catch (error) {
+    console.error('Error loading teachers from Firebase:', error);
+    return [];
+  }
+}

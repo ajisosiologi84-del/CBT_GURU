@@ -1,0 +1,52 @@
+{
+  "collections": [
+    {
+      "id": "cbt_config",
+      "description": "Central configuration for CBT exams including questions, exam tokens, and settings",
+      "documents": [
+        {
+          "id": "main",
+          "description": "Main CBT active configuration document",
+          "fields": {
+            "duration": { "type": "number", "description": "Exam duration in minutes" },
+            "kkm": { "type": "number", "description": "Passing standard score" },
+            "examToken": { "type": "string", "description": "Active exam token" },
+            "mapel": { "type": "string", "description": "Subject name" },
+            "mapelTitle": { "type": "string", "description": "Title of the exam paper" },
+            "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "student_results",
+      "description": "Submitted student exam results",
+      "documents": [
+        {
+          "id": "{resultId}",
+          "description": "Student exam result record",
+          "fields": {
+            "score": { "type": "number", "description": "Final score" },
+            "correctCount": { "type": "number", "description": "Total correct answers" },
+            "submittedAt": { "type": "string", "description": "Submission ISO timestamp" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "teacher_accounts",
+      "description": "Authorized teacher accounts",
+      "documents": [
+        {
+          "id": "{teacherId}",
+          "description": "Teacher profile and auth information",
+          "fields": {
+            "nip": { "type": "string", "description": "Teacher NIP or Username" },
+            "nama": { "type": "string", "description": "Full name" },
+            "mapel": { "type": "string", "description": "Subject taught" }
+          }
+        }
+      ]
+    }
+  ]
+}

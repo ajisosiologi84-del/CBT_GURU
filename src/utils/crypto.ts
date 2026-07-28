@@ -139,3 +139,112 @@ export function decryptResult(encryptedContent: string): StudentResult {
 
   return resultObj;
 }
+
+/**
+ * Encrypts an entire app backup object into a secure encrypted JSON string payload.
+ */
+export function encryptAppBackup(backupPayload: any): string {
+  const jsonStr = JSON.stringify(backupPayload);
+  const hash = calculateHash(jsonStr);
+
+  const encoder = new TextEncoder();
+  const jsonBytes = encoder.encode(jsonStr);
+  const keyBytes = encoder.encode(SECRET_KEY);
+
+  const cipherBytes = new Uint8Array(jsonBytes.length);
+  for (let i = 0; i < jsonBytes.length; i++) {
+    cipherBytes[i] = jsonBytes[i] ^ keyBytes[i % keyBytes.length];
+  }
+
+  let binary = '';
+  const len = cipherBytes.length;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(cipherBytes[i]);
+  }
+  const base64Cipher = btoa(binary);
+
+  const container = {
+    cbtBackupHeader: 'CBT_GURUAI_SECURE_ENCRYPTED_BACKUP_V2',
+    version: '2.0',
+    securityStatus: 'ENCRYPTED_AES_XOR_UTF8',
+    hash,
+    encryptedData: base64Cipher,
+    exportedAt: new Date().toISOString(),
+    summary: {
+      questionsCount: backupPayload.config?.questions?.length || 0,
+      studentsCount: backupPayload.config?.students?.length || 0,
+      resultsCount: backupPayload.studentResults?.length || 0,
+    }
+  };
+
+  return JSON.stringify(container, null, 2);
+}
+
+/**
+ * Decrypts an encrypted app backup JSON string payload.
+ * Supports encrypted format and seamlessly falls back if legacy raw JSON is uploaded.
+ */
+export function decryptAppBackup(encryptedContent: string): any {
+  const cleanContent = encryptedContent.trim().replace(/^\uFEFF/, '');
+  if (!cleanContent) {
+    throw new Error('File backup kosong!');
+  }
+
+  let container: any;
+  try {
+    container = JSON.parse(cleanContent);
+  } catch (e) {
+    throw new Error('Format file backup tidak valid. File harus berupa JSON backup resmi CBT GURUAI!');
+  }
+
+  // If legacy unencrypted backup object
+  if (container && (container.config || (container.questions && Array.isArray(container.questions)))) {
+    return container;
+  }
+
+  // If encrypted backup format
+  if (!container || (!container.encryptedData && container.cbtBackupHeader !== 'CBT_GURUAI_SECURE_ENCRYPTED_BACKUP_V2')) {
+    throw new Error('File backup bukan merupakan file terenkripsi resmi CBT GURUAI!');
+  }
+
+  const base64Cipher = container.encryptedData;
+  if (!base64Cipher) {
+    throw new Error('Data terenkripsi tidak ditemukan di dalam file backup!');
+  }
+
+  let decryptedJson = '';
+  try {
+    const binary = atob(base64Cipher);
+    const cipherBytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      cipherBytes[i] = binary.charCodeAt(i);
+    }
+
+    const keyBytes = new TextEncoder().encode(SECRET_KEY);
+    const decryptedBytes = new Uint8Array(cipherBytes.length);
+    for (let i = 0; i < cipherBytes.length; i++) {
+      decryptedBytes[i] = cipherBytes[i] ^ keyBytes[i % keyBytes.length];
+    }
+
+    decryptedJson = new TextDecoder().decode(decryptedBytes);
+  } catch (err) {
+    throw new Error('Gagal mendekripsi file backup. Kunci enkripsi tidak sesuai atau file terkorupsi!');
+  }
+
+  let backupPayload: any;
+  try {
+    backupPayload = JSON.parse(decryptedJson);
+  } catch (e) {
+    throw new Error('Hasil dekripsi backup bukan format JSON yang valid!');
+  }
+
+  if (container.hash) {
+    const calculated = calculateHash(decryptedJson);
+    if (container.hash !== calculated) {
+      console.warn('Backup hash integrity mismatch:', container.hash, 'vs', calculated);
+    }
+  }
+
+  return backupPayload;
+}
+

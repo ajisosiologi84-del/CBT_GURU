@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { AppConfig, Question, StudentResult, StudentUser, TeacherUser, KopSekolahConfig } from '../types';
-import { decryptResult } from '../utils/crypto';
+import { decryptResult, encryptAppBackup, decryptAppBackup } from '../utils/crypto';
 import { formatQuestionText } from '../utils/questionFormatter';
 import { exportOfflineAppHtml } from '../utils/offlineExport';
 import { generateResultsPdfReport, generateIndividualStudentPdf, defaultKopSekolah } from '../utils/pdfGenerator';
@@ -43,6 +43,7 @@ import {
   Eye,
   HelpCircle,
   Printer,
+  FileJson,
   ShieldCheck,
   ShieldAlert,
   FolderArchive,
@@ -145,7 +146,62 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newNama, setNewNama] = useState('');
   const [newKelas, setNewKelas] = useState('');
 
-  // Student Active Selection State
+  // Student Results Selection State
+  const [selectedResultIds, setSelectedResultIds] = useState<string[]>([]);
+
+  // --- STUDENT RESULTS SELECTION & BULK DELETE HANDLERS ---
+  const handleToggleSelectResultId = (id: string) => {
+    if (selectedResultIds.includes(id)) {
+      setSelectedResultIds(selectedResultIds.filter((rId) => rId !== id));
+    } else {
+      setSelectedResultIds([...selectedResultIds, id]);
+    }
+  };
+
+  const handleSelectAllResults = (filteredResults: StudentResult[]) => {
+    const filteredIds = filteredResults.map((r) => r.id);
+    const isAllSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedResultIds.includes(id));
+    if (isAllSelected) {
+      setSelectedResultIds(selectedResultIds.filter((id) => !filteredIds.includes(id)));
+    } else {
+      setSelectedResultIds(Array.from(new Set([...selectedResultIds, ...filteredIds])));
+    }
+  };
+
+  const handleDeleteSelectedStudentResults = () => {
+    if (selectedResultIds.length === 0) {
+      showAlert('Pilih/centang minimal 1 hasil ujian siswa yang akan dihapus!');
+      return;
+    }
+    showConfirm(
+      `Hapus ${selectedResultIds.length} Hasil Ujian Siswa Terpilih?`,
+      `Apakah Anda yakin ingin menghapus ${selectedResultIds.length} rekap hasil ujian siswa yang dicentang? Data hasil ujian yang dihapus tidak dapat dikembalikan.`,
+      () => {
+        const updated = studentResults.filter((r) => !selectedResultIds.includes(r.id));
+        onSaveStudentResults(updated);
+        setSelectedResultIds([]);
+        showAlert(`${selectedResultIds.length} rekap hasil ujian siswa berhasil dihapus!`);
+      },
+      true
+    );
+  };
+
+  const handleDeleteAllStudentResults = () => {
+    if (studentResults.length === 0) {
+      showAlert('Belum ada rekap hasil ujian siswa untuk dihapus.');
+      return;
+    }
+    showConfirm(
+      `Hapus SELURUH (${studentResults.length}) Hasil Ujian Siswa?`,
+      `PERINGATAN SANGAT PENTING! Anda akan menghapus SELURUH (${studentResults.length}) rekap hasil jawaban siswa dari sistem. Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin?`,
+      () => {
+        onSaveStudentResults([]);
+        setSelectedResultIds([]);
+        showAlert('Seluruh rekap hasil ujian siswa berhasil dihapus dari sistem.');
+      },
+      true
+    );
+  };
   const [studentSelectMode, setStudentSelectMode] = useState<'class' | 'individual'>('class');
   const [studentClassFilter, setStudentClassFilter] = useState<string>('ALL');
   const [studentStatusFilter, setStudentStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
@@ -185,8 +241,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         studentResults,
       };
 
-      const jsonStr = JSON.stringify(backupPayload, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const encryptedContent = encryptAppBackup(backupPayload);
+      const blob = new Blob([encryptedContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
 
@@ -194,16 +250,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
 
       link.href = url;
-      link.download = `BACKUP_CBT_GURUAI_${dateStr}_${timeStr}.json`;
+      link.download = `BACKUP_TERENKRIPSI_CBT_GURUAI_${dateStr}_${timeStr}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showAlert('Backup Seluruh Data Aplikasi CBT GURUAI berhasil diunduh! Simpan file ini di folder aman.');
+      showAlert('Backup Seluruh Data Aplikasi CBT GURUAI berhasil dienkripsi dan diunduh! Simpan file terenkripsi (.json) ini di tempat aman.');
     } catch (e) {
       console.error(e);
-      showAlert('Gagal membuat file backup data aplikasi!');
+      showAlert('Gagal membuat file backup data terenkripsi!');
+    }
+  };
+
+  const handleExportActivePaketJson = () => {
+    try {
+      const activeQuestions = config.questions.filter((q) => q.isActive !== false);
+      const packagePayload = {
+        appName: 'CBT_GURUAI_PAKET_SOAL',
+        version: '2.0',
+        exportedAt: new Date().toISOString(),
+        config: {
+          ...config,
+          questions: activeQuestions,
+        },
+      };
+
+      const encryptedContent = encryptAppBackup(packagePayload);
+      const blob = new Blob([encryptedContent], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+      const mapelClean = (config.mapel || 'CBT').replace(/[^a-zA-Z0-9]/g, '_');
+
+      link.href = url;
+      link.download = `PAKET_SOAL_${mapelClean}_${config.examToken || 'TOKEN'}_${dateStr}_${timeStr}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showAlert(`Paket Soal Aktif "${config.mapel || 'CBT'}" (${activeQuestions.length} Soal - Token: "${config.examToken || '-'}") berhasil dieksport sebagai file JSON terenkripsi!`);
+    } catch (e) {
+      console.error(e);
+      showAlert('Gagal membuat paket soal aktif!');
     }
   };
 
@@ -215,10 +307,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     reader.onload = (event) => {
       try {
         const content = event.target?.result as string;
-        const parsed = JSON.parse(content);
+        const parsed = decryptAppBackup(content);
 
         if (!parsed || typeof parsed !== 'object') {
-          showAlert('Format file backup tidak valid!');
+          showAlert('Format file backup tidak terdekripsi dengan benar!');
           return;
         }
 
@@ -229,20 +321,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         }
 
         showConfirm(
-          'Memulihkan Seluruh Data Backup?',
-          'Apakah Anda yakin ingin memulihkan (restore) seluruh data aplikasi dari file backup ini? Seluruh bank soal, data user, dan rekap nilai akan diperbarui.',
+          'Memulihkan Seluruh Data Backup Terenkripsi?',
+          'Apakah Anda yakin ingin memulihkan (restore) seluruh data aplikasi dari file backup terenkripsi ini? Seluruh bank soal, data user, dan rekap nilai akan diperbarui.',
           () => {
             onSaveConfig(restoredConfig);
             if (Array.isArray(parsed.studentResults)) {
               onSaveStudentResults(parsed.studentResults);
             }
-            showAlert('Sukses! Seluruh data aplikasi CBT GURUAI berhasil dipulihkan dari file backup.');
+            showAlert('Sukses! Seluruh data aplikasi CBT GURUAI berhasil dipulihkan dari file backup terenkripsi.');
           },
           true
         );
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        showAlert('Gagal membaca file backup! Pastikan format file adalah JSON valid.');
+        showAlert(err.message || 'Gagal membaca/mendekripsi file backup! Pastikan file adalah backup terenkripsi resmi CBT GURUAI.');
       }
     };
     reader.readAsText(file);
@@ -1281,11 +1373,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </p>
               <div className="space-y-2">
                 <button
+                  onClick={handleExportActivePaketJson}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-800/90 text-sky-400 hover:bg-sky-600 hover:text-white transition-all border border-slate-700/60 shadow-xs cursor-pointer"
+                  title="Unduh file Paket Soal Aktif (.json)"
+                >
+                  <FileJson className="w-4 h-4 shrink-0" />
+                  <span>Paket Soal (.json)</span>
+                </button>
+
+                <button
                   onClick={() => {
                     exportOfflineAppHtml(config);
                     setIsSidebarOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-800/90 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all border border-slate-700/60 shadow-xs"
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-800/90 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all border border-slate-700/60 shadow-xs cursor-pointer"
                 >
                   <Download className="w-4 h-4 shrink-0" />
                   <span>App Offline (.html)</span>
@@ -1357,11 +1458,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => exportOfflineAppHtml(config)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs shadow-xs active:scale-95"
-              title="Unduh file aplikasi standalone offline"
+              onClick={handleExportActivePaketJson}
+              className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs shadow-xs active:scale-95 cursor-pointer"
+              title="Unduh Paket Soal Aktif (.json)"
             >
-              <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">App Offline</span>
+              <FileJson className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Paket Soal (.json)</span>
+            </button>
+
+            <button
+              onClick={() => exportOfflineAppHtml(config)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 text-xs shadow-xs active:scale-95 cursor-pointer"
+              title="Unduh file aplikasi standalone offline (.html)"
+            >
+              <Download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">App Offline (.html)</span>
             </button>
 
             <button
@@ -2112,7 +2221,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 ) : (
                   <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
                     <Info className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Mode User Guru: Penambahan & penghapusan akun siswa dikelola oleh Admin.</span>
+                    <span>Mode Guru / Pendidik: Penambahan & penghapusan akun siswa dikelola oleh Administrator Utama.</span>
                   </div>
                 )}
               </div>
@@ -2525,7 +2634,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 ) : (
                   <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
                     <Info className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Mode User Guru: Penambahan & penghapusan akun guru dikelola oleh Admin.</span>
+                    <span>Mode Guru / Pendidik: Penambahan & penghapusan akun guru dikelola oleh Administrator Utama.</span>
                   </div>
                 )}
               </div>
@@ -2930,17 +3039,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {/* Student Results Table */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex-1 flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-base text-gray-800">Daftar Hasil Jawaban Siswa</h3>
-              <div className="relative w-64">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                <input
-                  type="text"
-                  value={rekapSearch}
-                  onChange={(e) => setRekapSearch(e.target.value)}
-                  placeholder="Cari Nama / No Peserta..."
-                  className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
-                />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="font-bold text-base text-gray-800">Daftar Hasil Jawaban Siswa</h3>
+                <p className="text-xs text-slate-500">
+                  Total {studentResults.length} hasil jawaban ({selectedResultIds.length} dicentang)
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Search Bar */}
+                <div className="relative w-full sm:w-56">
+                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={rekapSearch}
+                    onChange={(e) => setRekapSearch(e.target.value)}
+                    placeholder="Cari Nama / No Peserta..."
+                    className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-blue-500 bg-slate-50/50"
+                  />
+                </div>
+
+                {/* Bulk Action Buttons */}
+                {selectedResultIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelectedStudentResults}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus Siswa Terpilih ({selectedResultIds.length})</span>
+                  </button>
+                )}
+
+                {studentResults.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAllStudentResults}
+                    className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                    title="Hapus seluruh hasil ujian semua siswa"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Hapus Semua Hasil</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2948,6 +3090,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-gray-200 bg-slate-50 text-gray-600 text-[11px] font-bold uppercase tracking-wider">
+                    <th className="p-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredStudentResults.length > 0 &&
+                          filteredStudentResults.every((r) => selectedResultIds.includes(r.id))
+                        }
+                        onChange={() => handleSelectAllResults(filteredStudentResults)}
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        title="Pilih / Centang Semua"
+                      />
+                    </th>
                     <th className="p-3">No. Peserta</th>
                     <th className="p-3">Nama Siswa</th>
                     <th className="p-3">Skor Nilai</th>
@@ -2961,69 +3115,85 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <tbody className="divide-y divide-gray-100 text-xs">
                   {filteredStudentResults.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-gray-400 font-medium">
+                      <td colSpan={9} className="p-8 text-center text-gray-400 font-medium">
                         Belum ada file jawaban siswa (.cbt) yang didekripsi. Klik button <b>Upload File .CBT Siswa</b> di atas untuk merekap jawaban.
                       </td>
                     </tr>
                   ) : (
-                    filteredStudentResults.map((r) => (
-                      <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="p-3 font-mono font-bold text-gray-700">{r.studentInfo.noPeserta}</td>
-                        <td className="p-3 font-bold text-gray-900">{r.studentInfo.name}</td>
-                        <td className="p-3">
-                          <span
-                            className={`font-black text-base ${
-                              r.isPassed ? 'text-blue-600' : 'text-red-500'
-                            }`}
-                          >
-                            {r.score}
-                          </span>
-                        </td>
-                        <td className="p-3 text-gray-600">
-                          <span className="text-emerald-600 font-bold">{r.correctCount}</span> /{' '}
-                          <span className="text-red-500 font-bold">{r.incorrectCount}</span>
-                        </td>
-                        <td className="p-3">
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                              r.isPassed
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                : 'bg-red-100 text-red-800 border border-red-200'
-                            }`}
-                          >
-                            {r.isPassed ? 'LULUS' : 'TIDAK LULUS'}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          {r.warnings > 0 ? (
-                            <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                              {r.warnings}x Peringatan
+                    filteredStudentResults.map((r) => {
+                      const isSelected = selectedResultIds.includes(r.id);
+                      return (
+                        <tr
+                          key={r.id}
+                          className={`transition-colors ${
+                            isSelected ? 'bg-blue-50/70' : 'hover:bg-slate-50/80'
+                          }`}
+                        >
+                          <td className="p-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectResultId(r.id)}
+                              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </td>
+                          <td className="p-3 font-mono font-bold text-gray-700">{r.studentInfo.noPeserta}</td>
+                          <td className="p-3 font-bold text-gray-900">{r.studentInfo.name}</td>
+                          <td className="p-3">
+                            <span
+                              className={`font-black text-base ${
+                                r.isPassed ? 'text-blue-600' : 'text-red-500'
+                              }`}
+                            >
+                              {r.score}
                             </span>
-                          ) : (
-                            <span className="text-gray-400">0 (Bersih)</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-gray-500 text-[11px]">{r.submittedAt}</td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => generateIndividualStudentPdf(r, config.kopSekolah || defaultKopSekolah, config.questions)}
-                              className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-                              title="Cetak Lembar Laporan Hasil Jawaban Individual Siswa (PDF)"
+                          </td>
+                          <td className="p-3 text-gray-600">
+                            <span className="text-emerald-600 font-bold">{r.correctCount}</span> /{' '}
+                            <span className="text-red-500 font-bold">{r.incorrectCount}</span>
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                r.isPassed
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : 'bg-red-100 text-red-800 border border-red-200'
+                              }`}
                             >
-                              <FileText className="w-3 h-3 text-red-600" /> PDF Siswa
-                            </button>
-                            <button
-                              onClick={() => handleDeleteStudentResult(r.id)}
-                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                              title="Hapus Rekap"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              {r.isPassed ? 'LULUS' : 'TIDAK LULUS'}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            {r.warnings > 0 ? (
+                              <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                {r.warnings}x Peringatan
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">0 (Bersih)</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-gray-500 text-[11px]">{r.submittedAt}</td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => generateIndividualStudentPdf(r, config.kopSekolah || defaultKopSekolah, config.questions)}
+                                className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                                title="Cetak Lembar Laporan Hasil Jawaban Individual Siswa (PDF)"
+                              >
+                                <FileText className="w-3 h-3 text-red-600" /> PDF Siswa
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStudentResult(r.id)}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                title="Hapus Rekap"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

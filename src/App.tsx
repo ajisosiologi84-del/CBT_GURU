@@ -11,6 +11,14 @@ import { TestView } from './components/TestView';
 import { ResultView } from './components/ResultView';
 import { ReviewView } from './components/ReviewView';
 import { WarningModal, ConfirmModal, AlertModal } from './components/Modals';
+import {
+  saveConfigToFirebase,
+  loadConfigFromFirebase,
+  subscribeConfigFromFirebase,
+  saveStudentResultToFirebase,
+  loadStudentResultsFromFirebase,
+  subscribeStudentResultsFromFirebase,
+} from './lib/firebase';
 
 const STORAGE_KEY = 'cbt_sosiologi_config_v2';
 const RESULTS_KEY = 'cbt_sosiologi_student_results_v1';
@@ -68,13 +76,14 @@ export default function App() {
     return [];
   });
 
-  // Save config to LocalStorage on updates
+  // Save config to LocalStorage & Firebase on updates
   const saveConfig = useCallback((newConfig: AppConfig) => {
     setConfig(newConfig);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
+      saveConfigToFirebase(newConfig);
     } catch (e) {
-      console.error('Failed to save to local storage:', e);
+      console.error('Failed to save to local storage or Firebase:', e);
     }
   }, []);
 
@@ -85,6 +94,52 @@ export default function App() {
     } catch (e) {
       console.error('Failed to save student results:', e);
     }
+  }, []);
+
+  // Firebase Synchronization Effect
+  useEffect(() => {
+    // Initial fetch from Firebase
+    loadConfigFromFirebase().then((remoteConfig) => {
+      if (remoteConfig && Array.isArray(remoteConfig.questions) && remoteConfig.questions.length > 0) {
+        setConfig(remoteConfig);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteConfig));
+        } catch (e) {}
+      }
+    }).catch(() => {});
+
+    loadStudentResultsFromFirebase().then((remoteResults) => {
+      if (Array.isArray(remoteResults) && remoteResults.length > 0) {
+        setStudentResults(remoteResults);
+        try {
+          localStorage.setItem(RESULTS_KEY, JSON.stringify(remoteResults));
+        } catch (e) {}
+      }
+    }).catch(() => {});
+
+    // Realtime subscribers
+    const unsubConfig = subscribeConfigFromFirebase((remoteConfig) => {
+      if (remoteConfig && Array.isArray(remoteConfig.questions) && remoteConfig.questions.length > 0) {
+        setConfig(remoteConfig);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteConfig));
+        } catch (e) {}
+      }
+    });
+
+    const unsubResults = subscribeStudentResultsFromFirebase((remoteResults) => {
+      if (Array.isArray(remoteResults)) {
+        setStudentResults(remoteResults);
+        try {
+          localStorage.setItem(RESULTS_KEY, JSON.stringify(remoteResults));
+        } catch (e) {}
+      }
+    });
+
+    return () => {
+      unsubConfig();
+      unsubResults();
+    };
   }, []);
 
   // View State & Admin Role
@@ -435,9 +490,10 @@ export default function App() {
     setIncorrectCount(incorrect);
     setLastStudentResult(resultObj);
 
-    // Save to local student results rekap list
+    // Save to local & Firebase student results rekap list
     const updatedResults = [resultObj, ...studentResults.filter((r) => r.studentInfo.noPeserta !== studentInfo.noPeserta)];
     saveStudentResults(updatedResults);
+    saveStudentResultToFirebase(resultObj);
 
     setViewState('result');
   };
