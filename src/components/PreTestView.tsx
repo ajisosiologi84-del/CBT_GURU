@@ -32,7 +32,7 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
             </div>
             <div>
               <h2 className="text-base sm:text-xl font-bold text-slate-800">Konfirmasi Data Peserta</h2>
-              <p className="text-[10px] sm:text-xs text-gray-500">Sistem CBT Assessment TKA Sosiologi 2026</p>
+              <p className="text-[10px] sm:text-xs text-gray-500">Sistem CBT Assessment TKA SMA 2026</p>
             </div>
           </div>
           <button

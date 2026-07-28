@@ -1710,7 +1710,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
             <span className="font-semibold text-slate-300">CBT Standalone Server</span>
           </div>
-          <p className="text-[10px] text-slate-500 mt-0.5">Assessment TKA Sosiologi SMA</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Assessment TKA SMA</p>
         </div>
       </aside>
 
@@ -1751,7 +1751,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </span>
               </h2>
               <p className="text-[11px] text-slate-500 hidden sm:block truncate">
-                Sistem CBT Assessment TKA Sosiologi SMA — Panel Guru
+                Sistem CBT Assessment TKA SMA — Panel Guru
               </p>
             </div>
           </div>
