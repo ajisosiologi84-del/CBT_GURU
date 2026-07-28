@@ -3522,6 +3522,87 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
 
+          {/* Informative Guidance Card for Item Analysis Methodology & Parameters */}
+          <div className="bg-slate-900 text-slate-100 p-6 rounded-2xl shadow-md border border-slate-800 space-y-4">
+            <div className="flex items-start gap-3 border-b border-slate-800 pb-4">
+              <div className="p-2.5 bg-teal-500/20 text-teal-400 rounded-xl shrink-0">
+                <HelpCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                  Panduan & Parameter Utama Analisis Butir Soal (Item Analysis)
+                </h3>
+                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                  Analisis butir soal adalah kegiatan mengkaji setiap pertanyaan ujian untuk mengukur kualitasnya, yang terdiri dari tiga aspek utama: <strong className="text-teal-300">tingkat kesukaran</strong>, <strong className="text-teal-300">daya pembeda</strong>, dan <strong className="text-teal-300">efektivitas pengecoh (distraktor)</strong>. Proses ini bertujuan untuk menentukan apakah sebuah soal layak dipakai, diperbaiki, atau dibuang.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-1">
+              {/* Parameter 1: Tingkat Kesukaran */}
+              <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-teal-400 flex items-center gap-1.5 text-xs">
+                    <BarChart2 className="w-4 h-4" /> Tingkat Kesukaran (P)
+                  </span>
+                  <span className="text-[10px] font-mono bg-teal-950 text-teal-300 border border-teal-800 px-2 py-0.5 rounded-md font-bold">
+                    Rentang: 0.00 – 1.00
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-normal">
+                  Mengukur seberapa mudah atau sulit sebuah soal bagi seluruh siswa peserta ujian.
+                </p>
+                <div className="space-y-1.5 pt-1 text-[11px]">
+                  <div className="flex justify-between items-center bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800">
+                    <span className="text-sky-300 font-bold">0.30 – 0.70</span>
+                    <span className="bg-sky-950 text-sky-300 font-extrabold text-[10px] px-2 py-0.5 rounded border border-sky-800">Kategori Ideal / Sedang</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800">
+                    <span className="text-emerald-300 font-bold">&gt; 0.70</span>
+                    <span className="bg-emerald-950 text-emerald-300 font-extrabold text-[10px] px-2 py-0.5 rounded border border-emerald-800">Soal Terlalu Mudah</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-900/60 px-2.5 py-1 rounded-lg border border-slate-800">
+                    <span className="text-rose-300 font-bold">&lt; 0.30</span>
+                    <span className="bg-rose-950 text-rose-300 font-extrabold text-[10px] px-2 py-0.5 rounded border border-rose-800">Soal Terlalu Sulit</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Parameter 2: Daya Pembeda */}
+              <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-amber-400 flex items-center gap-1.5 text-xs">
+                    <PieChart className="w-4 h-4" /> Daya Pembeda (D)
+                  </span>
+                  <span className="text-[10px] font-mono bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded-md font-bold">
+                    Diskriminasi
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-normal">
+                  Mengukur kemampuan soal dalam membedakan antara siswa kelompok atas (pintar) dan siswa kelompok bawah.
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 pt-1 text-[11px]">
+                  <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <span className="text-emerald-300 font-bold">&ge; 0.40</span>
+                    <span className="text-emerald-400 font-extrabold text-[10px]">Sangat Baik</span>
+                  </div>
+                  <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <span className="text-teal-300 font-bold">0.30 – 0.39</span>
+                    <span className="text-teal-400 font-extrabold text-[10px]">Baik</span>
+                  </div>
+                  <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <span className="text-amber-300 font-bold">0.20 – 0.29</span>
+                    <span className="text-amber-400 font-extrabold text-[10px]">Cukup (Revisi)</span>
+                  </div>
+                  <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <span className="text-rose-300 font-bold">&lt; 0.20</span>
+                    <span className="text-rose-400 font-extrabold text-[10px]">Buruk (Dibuang)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Drag & Drop Zone for Uploading Student Results for Item Analysis */}
           <div
             onDragOver={(e) => {
