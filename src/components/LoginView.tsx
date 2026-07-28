@@ -292,15 +292,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
           ) : (
             /* Panel Kelola Ujian Form */
             <form onSubmit={handleAdminSubmit} className="space-y-3.5">
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-600">
-                <p className="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
-                  <Settings className="w-4 h-4 text-indigo-600" /> Otentikasi Pengelola Ujian:
-                </p>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Panel khusus untuk Pengelola Ujian dan Tenaga Pendidik / Guru. Seluruh data terhubung secara terenkripsi ke database Firebase.
-                </p>
-              </div>
-
               <div>
                 <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="adminUser">
                   Username / NIP Guru

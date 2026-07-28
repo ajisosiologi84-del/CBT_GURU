@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { AppConfig, Question, StudentResult, StudentUser, TeacherUser, KopSekolahConfig } from '../types';
 import { decryptResult, encryptAppBackup, decryptAppBackup } from '../utils/crypto';
 import { formatQuestionText } from '../utils/questionFormatter';
-import { generateResultsPdfReport, generateIndividualStudentPdf, defaultKopSekolah } from '../utils/pdfGenerator';
+import { generateResultsPdfReport, generateIndividualStudentPdf, generateItemAnalysisPdfReport, ItemAnalysisData, defaultKopSekolah } from '../utils/pdfGenerator';
 import * as XLSX from 'xlsx';
 import {
   Sliders,
@@ -48,6 +48,8 @@ import {
   FolderArchive,
   FileText,
   Building2,
+  BarChart2,
+  PieChart,
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -77,8 +79,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   showAlert,
   showConfirm,
 }) => {
-  const [activeTab, setActiveTab] = useState<'bank' | 'rekap' | 'students' | 'token' | 'mapel' | 'backup'>('bank');
+  const [activeTab, setActiveTab] = useState<'bank' | 'rekap' | 'analisis' | 'students' | 'token' | 'mapel' | 'backup'>('bank');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Analisis Butir Soal Filter State
+  const [analisisSearch, setAnalisisSearch] = useState('');
+  const [analisisDifficultyFilter, setAnalisisDifficultyFilter] = useState<'ALL' | 'Mudah' | 'Sedang' | 'Sukar'>('ALL');
+  const [analisisMapelFilter, setAnalisisMapelFilter] = useState<string>('ALL');
   
   // General Config State
   const [durationInput, setDurationInput] = useState<number>(config.duration);
@@ -1197,8 +1204,275 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const passedCount = studentResults.filter((r) => r.isPassed).length;
 
+  // --- ANALISIS BUTIR SOAL (ITEM ANALYSIS) CALCULATION ---
+  const rawItemAnalysisList = React.useMemo<ItemAnalysisData[]>(() => {
+    const targetMapel = analisisMapelFilter !== 'ALL' ? analisisMapelFilter : selectedBankMapel !== 'ALL' ? selectedBankMapel : 'ALL';
+    const filteredQ = config.questions.filter((q) => {
+      if (targetMapel !== 'ALL' && q.mapel && q.mapel !== targetMapel) {
+        return false;
+      }
+      return true;
+    });
+
+    const sortedResults = [...studentResults].sort((a, b) => b.score - a.score);
+    const totalRes = sortedResults.length;
+    const groupSize = Math.max(1, Math.round(totalRes * 0.27));
+    const upperGroup = sortedResults.slice(0, groupSize);
+    const lowerGroup = totalRes > 1 ? sortedResults.slice(totalRes - groupSize) : [];
+
+    return filteredQ.map((q, idx) => {
+      let countA = 0;
+      let countB = 0;
+      let countC = 0;
+      let countD = 0;
+      let countE = 0;
+      let countEmpty = 0;
+      let totalCorrect = 0;
+      let totalIncorrect = 0;
+
+      let upperCorrect = 0;
+      let lowerCorrect = 0;
+
+      const correctOpt = q.options.find((o) => o.isCorrect);
+      const keyOption = correctOpt ? correctOpt.id.toUpperCase() : 'A';
+
+      sortedResults.forEach((r) => {
+        let qIdx = -1;
+        if (r.questionSnapshots && r.questionSnapshots.length > 0) {
+          qIdx = r.questionSnapshots.findIndex((sq) => sq.id === q.id);
+        } else {
+          qIdx = config.questions.findIndex((sq) => sq.id === q.id);
+        }
+
+        const userAns = qIdx !== -1 && r.answers ? r.answers[qIdx] : null;
+
+        if (!userAns || String(userAns).trim() === '') {
+          countEmpty++;
+          totalIncorrect++;
+        } else {
+          const cleanAns = String(userAns).trim().toUpperCase();
+          const matchedOpt = q.options.find(
+            (o) => o.id.toUpperCase() === cleanAns || o.text.trim().toUpperCase() === cleanAns
+          );
+          const ansId = matchedOpt ? matchedOpt.id.toUpperCase() : cleanAns;
+
+          if (ansId === 'A') countA++;
+          else if (ansId === 'B') countB++;
+          else if (ansId === 'C') countC++;
+          else if (ansId === 'D') countD++;
+          else if (ansId === 'E') countE++;
+          else countEmpty++;
+
+          const isCorr = matchedOpt ? matchedOpt.isCorrect === true : ansId === keyOption;
+          if (isCorr) {
+            totalCorrect++;
+          } else {
+            totalIncorrect++;
+          }
+        }
+      });
+
+      upperGroup.forEach((r) => {
+        let qIdx = -1;
+        if (r.questionSnapshots && r.questionSnapshots.length > 0) {
+          qIdx = r.questionSnapshots.findIndex((sq) => sq.id === q.id);
+        } else {
+          qIdx = config.questions.findIndex((sq) => sq.id === q.id);
+        }
+        const userAns = qIdx !== -1 && r.answers ? r.answers[qIdx] : null;
+        if (userAns && String(userAns).trim() !== '') {
+          const cleanAns = String(userAns).trim().toUpperCase();
+          const matchedOpt = q.options.find(
+            (o) => o.id.toUpperCase() === cleanAns || o.text.trim().toUpperCase() === cleanAns
+          );
+          if (matchedOpt ? matchedOpt.isCorrect === true : cleanAns === keyOption) {
+            upperCorrect++;
+          }
+        }
+      });
+
+      lowerGroup.forEach((r) => {
+        let qIdx = -1;
+        if (r.questionSnapshots && r.questionSnapshots.length > 0) {
+          qIdx = r.questionSnapshots.findIndex((sq) => sq.id === q.id);
+        } else {
+          qIdx = config.questions.findIndex((sq) => sq.id === q.id);
+        }
+        const userAns = qIdx !== -1 && r.answers ? r.answers[qIdx] : null;
+        if (userAns && String(userAns).trim() !== '') {
+          const cleanAns = String(userAns).trim().toUpperCase();
+          const matchedOpt = q.options.find(
+            (o) => o.id.toUpperCase() === cleanAns || o.text.trim().toUpperCase() === cleanAns
+          );
+          if (matchedOpt ? matchedOpt.isCorrect === true : cleanAns === keyOption) {
+            lowerCorrect++;
+          }
+        }
+      });
+
+      const difficultyIndex = totalRes > 0 ? totalCorrect / totalRes : 0;
+      let difficultyCategory: 'Mudah' | 'Sedang' | 'Sukar' = 'Sedang';
+      if (difficultyIndex > 0.70) difficultyCategory = 'Mudah';
+      else if (difficultyIndex < 0.30) difficultyCategory = 'Sukar';
+
+      let discriminationIndex = totalRes > 0 && groupSize > 0 ? (upperCorrect - lowerCorrect) / groupSize : 0;
+      if (discriminationIndex < 0) discriminationIndex = 0;
+
+      let discriminationCategory: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Buruk' = 'Baik';
+      if (discriminationIndex >= 0.40) discriminationCategory = 'Sangat Baik';
+      else if (discriminationIndex >= 0.30) discriminationCategory = 'Baik';
+      else if (discriminationIndex >= 0.20) discriminationCategory = 'Cukup';
+      else discriminationCategory = 'Buruk';
+
+      let recommendation: 'Diterima' | 'Direvisi' | 'Dibuang' = 'Diterima';
+      if (discriminationCategory === 'Buruk') {
+        recommendation = 'Dibuang';
+      } else if (discriminationCategory === 'Cukup' || difficultyCategory === 'Sukar') {
+        recommendation = 'Direvisi';
+      }
+
+      return {
+        questionNumber: idx + 1,
+        questionText: q.question,
+        keyOption,
+        mapel: q.mapel || config.mapel || 'Sosiologi',
+        countA,
+        countB,
+        countC,
+        countD,
+        countE,
+        countEmpty,
+        totalCorrect,
+        totalIncorrect,
+        totalRespondents: totalRes,
+        difficultyIndex,
+        difficultyCategory,
+        discriminationIndex,
+        discriminationCategory,
+        recommendation,
+      };
+    });
+  }, [config.questions, studentResults, analisisMapelFilter, selectedBankMapel, config.mapel]);
+
+  const filteredAnalisisList = rawItemAnalysisList.filter((item) => {
+    const matchesSearch = item.questionText.toLowerCase().includes(analisisSearch.toLowerCase());
+    const matchesDiff = analisisDifficultyFilter === 'ALL' || item.difficultyCategory === analisisDifficultyFilter;
+    return matchesSearch && matchesDiff;
+  });
+
+  const handleExportAnalisisToExcel = () => {
+    if (rawItemAnalysisList.length === 0) {
+      showAlert('Belum ada data butir soal untuk dianalisis.');
+      return;
+    }
+
+    const ws_data = [
+      [
+        'No. Soal',
+        'Mata Pelajaran',
+        'Pertanyaan Soal',
+        'Kunci Jawaban',
+        'Pilihan A',
+        'Pilihan B',
+        'Pilihan C',
+        'Pilihan D',
+        'Pilihan E',
+        'Tidak Menjawab (Kosong)',
+        'Total Menjawab Benar',
+        'Total Menjawab Salah',
+        'Total Responden (Siswa)',
+        'Tingkat Kesukaran (P)',
+        'Kategori Kesukaran',
+        'Daya Beda (D)',
+        'Kategori Daya Beda',
+        'Rekomendasi Soal',
+      ],
+      ...rawItemAnalysisList.map((item) => [
+        item.questionNumber,
+        item.mapel,
+        item.questionText,
+        item.keyOption,
+        item.countA,
+        item.countB,
+        item.countC,
+        item.countD,
+        item.countE,
+        item.countEmpty,
+        item.totalCorrect,
+        item.totalIncorrect,
+        item.totalRespondents,
+        item.difficultyIndex.toFixed(2),
+        item.difficultyCategory,
+        item.discriminationIndex.toFixed(2),
+        item.discriminationCategory,
+        item.recommendation,
+      ]),
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Analisis_Butir_Soal');
+    const cleanMapel = (config.mapel || 'Sosiologi').replace(/[^a-zA-Z0-9]/g, '_');
+    XLSX.writeFile(wb, `ANALISIS_BUTIR_SOAL_${cleanMapel}_${Date.now()}.xlsx`);
+  };
+
+  const handleExportAnalisisToPdf = () => {
+    if (rawItemAnalysisList.length === 0) {
+      showAlert('Belum ada data analisis butir soal.');
+      return;
+    }
+    generateItemAnalysisPdfReport(
+      rawItemAnalysisList,
+      config.kopSekolah || defaultKopSekolah,
+      {
+        mapel: analisisMapelFilter !== 'ALL' ? analisisMapelFilter : (config.mapel || 'Sosiologi'),
+        mapelTitle: config.mapelTitle || 'Assessment TKA Sosiologi SMA',
+        totalQuestions: rawItemAnalysisList.length,
+        totalRespondents: studentResults.length,
+      }
+    );
+  };
+
   return (
     <div className="flex-1 flex h-screen bg-slate-100 absolute inset-0 z-50 overflow-hidden">
+      {/* GLOBAL HIDDEN FILE INPUTS (Mounted continuously across all tabs) */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept=".xls,.xlsx"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={cbtFileInputRef}
+        onChange={handleCbtFileUpload}
+        accept=".cbt,.json,.txt,*"
+        multiple
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={studentFileInputRef}
+        onChange={handleStudentExcelUpload}
+        accept=".xls,.xlsx"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={teacherFileInputRef}
+        onChange={handleTeacherExcelUpload}
+        accept=".xls,.xlsx"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={backupFileInputRef}
+        onChange={handleRestoreAppData}
+        accept=".json,.cbt,*"
+        className="hidden"
+      />
+
       {/* LEFT SIDEBAR NAVIGATION */}
       <aside
         className={`fixed md:static inset-y-0 left-0 z-40 w-64 md:w-72 bg-slate-900 text-slate-100 flex flex-col justify-between transition-transform duration-300 shadow-2xl border-r border-slate-800 shrink-0 ${
@@ -1357,6 +1631,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       {studentResults.length}
                     </span>
                   )}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('analisis');
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
+                    activeTab === 'analisis'
+                      ? 'bg-teal-600 text-white shadow-md shadow-teal-900/40 font-black'
+                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <BarChart2 className="w-4 h-4 text-teal-400 shrink-0" />
+                    <span>Analisis Butir Soal</span>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      activeTab === 'analisis'
+                        ? 'bg-teal-800 text-white'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {config.questions.length}
+                  </span>
                 </button>
 
                 <button
@@ -1910,17 +2210,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
                 >
                   <Upload className="w-4 h-4" /> Upload Excel Soal
                 </button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  accept=".xls,.xlsx"
-                  className="hidden"
-                />
 
                 <button
                   onClick={() => onOpenQuestionModal(null)}
@@ -2212,13 +2505,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     >
                       <Upload className="w-4 h-4" /> Upload Excel Siswa
                     </button>
-                    <input
-                      type="file"
-                      ref={studentFileInputRef}
-                      onChange={handleStudentExcelUpload}
-                      accept=".xls,.xlsx"
-                      className="hidden"
-                    />
 
                     <button
                       onClick={() => setIsAddStudentModalOpen(true)}
@@ -2625,13 +2911,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     >
                       <Upload className="w-4 h-4" /> Upload Excel Guru
                     </button>
-                    <input
-                      type="file"
-                      ref={teacherFileInputRef}
-                      onChange={handleTeacherExcelUpload}
-                      accept=".xls,.xlsx"
-                      className="hidden"
-                    />
 
                     <button
                       onClick={() => setIsAddTeacherModalOpen(true)}
@@ -2865,13 +3144,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 >
                   <Upload className="w-4 h-4 text-emerald-400" /> Pilih File Backup (.json)
                 </button>
-                <input
-                  type="file"
-                  ref={backupFileInputRef}
-                  onChange={handleRestoreAppData}
-                  accept=".json"
-                  className="hidden"
-                />
               </div>
 
               {/* Card 3: Kop Surat & Signature Configuration */}
@@ -2961,14 +3233,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               >
                 <Upload className="w-4 h-4 text-emerald-400" /> Upload File .CBT Siswa
               </button>
-              <input
-                type="file"
-                ref={cbtFileInputRef}
-                onChange={handleCbtFileUpload}
-                accept=".cbt,.json,.txt,*"
-                multiple
-                className="hidden"
-              />
             </div>
           </div>
 
@@ -3199,6 +3463,310 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: ANALISIS BUTIR SOAL */}
+      {activeTab === 'analisis' && (
+        <div className="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
+          {/* Action Header & Export Section */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+            <div>
+              <h2 className="font-bold text-xl text-gray-800 flex items-center gap-2">
+                <BarChart2 className="w-5 h-5 text-teal-600" /> Analisis Butir Soal (Item Analysis)
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Evaluasi Kuantitatif Tingkat Kesukaran (P), Daya Beda (D), & Sebaran Jawaban Siswa (Distraktor Opsi A, B, C, D, E) untuk Penjaminan Mutu Soal.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5 flex-wrap">
+              <button
+                onClick={() => setIsKopModalOpen(true)}
+                className="bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                title="Pengaturan Kop Surat Sekolah & TTD Guru"
+              >
+                <Building2 className="w-4 h-4 text-sky-600" /> Kop & TTD Guru
+              </button>
+
+              <button
+                onClick={handleExportAnalisisToPdf}
+                className="bg-red-600 hover:bg-red-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" /> Cetak PDF Analisis
+              </button>
+
+              <button
+                onClick={handleExportAnalisisToExcel}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" /> Export Excel Analisis
+              </button>
+
+              <button
+                onClick={() => cbtFileInputRef.current?.click()}
+                className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                title="Upload file hasil jawaban siswa (.cbt) untuk bahan Analisis"
+              >
+                <Upload className="w-4 h-4 text-emerald-400" /> Upload File .CBT Siswa
+              </button>
+            </div>
+          </div>
+
+          {/* Drag & Drop Zone for Uploading Student Results for Item Analysis */}
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                processCbtFilesList(e.dataTransfer.files);
+              }
+            }}
+            onClick={() => cbtFileInputRef.current?.click()}
+            className="border-2 border-dashed border-teal-300 hover:border-teal-500 bg-teal-50/40 hover:bg-teal-50/80 p-5 rounded-2xl text-center cursor-pointer transition-all flex flex-col sm:flex-row items-center justify-center gap-3 group"
+          >
+            <div className="w-10 h-10 bg-teal-100 text-teal-700 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+              <Upload className="w-5 h-5" />
+            </div>
+            <div className="text-left sm:text-left text-center">
+              <p className="font-bold text-xs text-slate-800">
+                Upload / Drop File <span className="text-teal-700 bg-teal-100 px-2 py-0.5 rounded-md font-mono font-bold">.CBT</span> Hasil Jawaban Siswa di Sini
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Upload sekaligus banyak file hasil jawaban siswa (.cbt / .json) untuk bahan Analisis Butir Soal per Mata Pelajaran ({analisisMapelFilter !== 'ALL' ? analisisMapelFilter : 'Semua Mapel'}).
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center gap-4">
+              <div className="p-3 bg-teal-50 text-teal-600 rounded-xl">
+                <ListChecks className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-bold uppercase">Total Soal</div>
+                <div className="text-2xl font-black text-gray-800">{rawItemAnalysisList.length}</div>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center gap-4">
+              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                <Users className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-bold uppercase">Responden Siswa</div>
+                <div className="text-2xl font-black text-gray-800">{studentResults.length}</div>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center gap-4">
+              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                <CheckCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-bold uppercase">Soal Diterima</div>
+                <div className="text-2xl font-black text-emerald-600">
+                  {rawItemAnalysisList.filter((i) => i.recommendation === 'Diterima').length}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center gap-4">
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                <HelpCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 font-bold uppercase">Soal Direvisi/Dibuang</div>
+                <div className="text-2xl font-black text-amber-600">
+                  {rawItemAnalysisList.filter((i) => i.recommendation !== 'Diterima').length}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Table Card */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex-1 flex flex-col space-y-4">
+            {/* Filters Bar */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                {/* Subject Filter */}
+                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs">
+                  <BookOpen className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="font-bold text-gray-600 text-[11px]">Mapel:</span>
+                  <select
+                    value={analisisMapelFilter}
+                    onChange={(e) => setAnalisisMapelFilter(e.target.value)}
+                    className="font-bold text-gray-800 focus:outline-none bg-transparent cursor-pointer"
+                  >
+                    <option value="ALL">Semua Mapel</option>
+                    {mapelList.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Difficulty Filter */}
+                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs">
+                  <BarChart2 className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="font-bold text-gray-600 text-[11px]">Kesukaran:</span>
+                  <select
+                    value={analisisDifficultyFilter}
+                    onChange={(e) => setAnalisisDifficultyFilter(e.target.value as any)}
+                    className="font-bold text-gray-800 focus:outline-none bg-transparent cursor-pointer"
+                  >
+                    <option value="ALL">Semua Kesukaran</option>
+                    <option value="Mudah">🟢 Mudah (P &gt; 0.70)</option>
+                    <option value="Sedang">🔵 Sedang (0.30 - 0.70)</option>
+                    <option value="Sukar">🔴 Sukar (P &lt; 0.30)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative w-full md:w-72">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={analisisSearch}
+                  onChange={(e) => setAnalisisSearch(e.target.value)}
+                  placeholder="Cari teks pertanyaan..."
+                  className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-teal-500 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-slate-50 text-gray-600 text-[11px] font-bold uppercase tracking-wider">
+                    <th className="p-3 w-12 text-center">No</th>
+                    <th className="p-3 min-w-[220px]">Pertanyaan Soal</th>
+                    <th className="p-3 text-center">Kunci</th>
+                    <th className="p-3 min-w-[200px]">Sebaran Pilihan Siswa (A/B/C/D/E/Kosong)</th>
+                    <th className="p-3 text-center">Benar / Salah</th>
+                    <th className="p-3 text-center">Tingkat Kesukaran (P)</th>
+                    <th className="p-3 text-center">Daya Beda (D)</th>
+                    <th className="p-3 text-center">Rekomendasi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 text-xs">
+                  {filteredAnalisisList.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-gray-400 font-medium">
+                        {rawItemAnalysisList.length === 0
+                          ? 'Belum ada data soal atau jawaban siswa yang siap dianalisis.'
+                          : 'Tidak ada butir soal yang sesuai dengan pencarian / filter Anda.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAnalisisList.map((item) => {
+                      return (
+                        <tr key={item.questionNumber} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="p-3 text-center font-bold text-gray-700">{item.questionNumber}</td>
+                          <td className="p-3">
+                            <p className="font-semibold text-gray-900 line-clamp-2">{item.questionText}</p>
+                            <span className="text-[10px] text-teal-600 bg-teal-50 font-bold px-1.5 py-0.5 rounded border border-teal-200/60 mt-1 inline-block">
+                              {item.mapel}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className="w-7 h-7 inline-flex items-center justify-center font-black rounded-lg bg-emerald-600 text-white shadow-xs">
+                              {item.keyOption}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono">
+                              <span className={`px-1.5 py-0.5 rounded font-bold ${item.keyOption === 'A' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-700'}`}>
+                                A: {item.countA}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded font-bold ${item.keyOption === 'B' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-700'}`}>
+                                B: {item.countB}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded font-bold ${item.keyOption === 'C' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-700'}`}>
+                                C: {item.countC}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded font-bold ${item.keyOption === 'D' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-700'}`}>
+                                D: {item.countD}
+                              </span>
+                              <span className={`px-1.5 py-0.5 rounded font-bold ${item.keyOption === 'E' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-700'}`}>
+                                E: {item.countE}
+                              </span>
+                              {item.countEmpty > 0 && (
+                                <span className="px-1.5 py-0.5 rounded font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  Kosong: {item.countEmpty}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3 text-center text-gray-700">
+                            <span className="text-emerald-600 font-bold">{item.totalCorrect}</span> /{' '}
+                            <span className="text-red-500 font-bold">{item.totalIncorrect}</span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="font-mono font-extrabold text-sm text-slate-800">
+                                {item.difficultyIndex.toFixed(2)}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide mt-0.5 ${
+                                  item.difficultyCategory === 'Mudah'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                    : item.difficultyCategory === 'Sedang'
+                                    ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                                    : 'bg-rose-100 text-rose-800 border border-rose-200'
+                                }`}
+                              >
+                                {item.difficultyCategory}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="font-mono font-extrabold text-sm text-slate-800">
+                                {item.discriminationIndex.toFixed(2)}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide mt-0.5 ${
+                                  item.discriminationCategory === 'Sangat Baik' || item.discriminationCategory === 'Baik'
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                    : item.discriminationCategory === 'Cukup'
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                    : 'bg-red-100 text-red-800 border border-red-200'
+                                }`}
+                              >
+                                {item.discriminationCategory}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                item.recommendation === 'Diterima'
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : item.recommendation === 'Direvisi'
+                                  ? 'bg-amber-500 text-white shadow-2xs'
+                                  : 'bg-red-600 text-white shadow-2xs'
+                              }`}
+                            >
+                              {item.recommendation}
+                            </span>
                           </td>
                         </tr>
                       );

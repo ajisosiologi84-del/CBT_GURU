@@ -276,8 +276,12 @@ export function generateIndividualStudentPdf(
   });
 
   const totalAnsweredCount = answeredItems.length;
-  const computedIncorrect = totalExamQuestions - computedCorrect;
-  const displayScore = result.score !== undefined ? result.score : (totalExamQuestions > 0 ? Math.round((computedCorrect / totalExamQuestions) * 100) : 0);
+  const computedIncorrect = Math.max(0, totalExamQuestions - computedCorrect);
+
+  const displayCorrect = typeof result.correctCount === 'number' ? result.correctCount : computedCorrect;
+  const displayIncorrect = typeof result.incorrectCount === 'number' ? result.incorrectCount : Math.max(0, totalExamQuestions - displayCorrect);
+
+  const displayScore = result.score !== undefined ? result.score : (totalExamQuestions > 0 ? Math.round((displayCorrect / totalExamQuestions) * 100) : 0);
   const isPassed = result.isPassed !== undefined ? result.isPassed : displayScore >= (result.kkm || 75);
 
   const cleanText = (str: string | null | undefined): string => {
@@ -307,7 +311,7 @@ export function generateIndividualStudentPdf(
   currentY += 4.5;
 
   doc.text(`Mata Pelajaran      : ${result.studentInfo.mapel}`, 14, currentY);
-  doc.text(`Hasil Jawaban: ${computedCorrect} Benar / ${computedIncorrect} Salah (${totalAnsweredCount}/${totalExamQuestions} Dikerjakan)`, pageWidth - 70, currentY);
+  doc.text(`Hasil Jawaban: ${displayCorrect} Benar / ${displayIncorrect} Salah (${totalAnsweredCount}/${totalExamQuestions} Dikerjakan)`, pageWidth - 70, currentY);
   currentY += 4.5;
 
   doc.text(`Waktu Submit        : ${result.submittedAt || new Date().toLocaleString('id-ID')}`, 14, currentY);
@@ -411,3 +415,170 @@ export function generateIndividualStudentPdf(
   const cleanStudent = result.studentInfo.name.replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`LEMBAR_JAWABAN_${cleanStudent}_${Date.now()}.pdf`);
 }
+
+export interface ItemAnalysisData {
+  questionNumber: number;
+  questionText: string;
+  keyOption: string;
+  mapel: string;
+  countA: number;
+  countB: number;
+  countC: number;
+  countD: number;
+  countE: number;
+  countEmpty: number;
+  totalCorrect: number;
+  totalIncorrect: number;
+  totalRespondents: number;
+  difficultyIndex: number;
+  difficultyCategory: 'Mudah' | 'Sedang' | 'Sukar';
+  discriminationIndex: number;
+  discriminationCategory: 'Sangat Baik' | 'Baik' | 'Cukup' | 'Buruk';
+  recommendation: 'Diterima' | 'Direvisi' | 'Dibuang';
+}
+
+export function generateItemAnalysisPdfReport(
+  items: ItemAnalysisData[],
+  kop: KopSekolahConfig,
+  examInfo: {
+    mapel: string;
+    mapelTitle: string;
+    totalQuestions: number;
+    totalRespondents: number;
+  }
+) {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let currentY = 10;
+
+  // 1. KOP SEKOLAH
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(40, 40, 40);
+  doc.text((kop.dinas || defaultKopSekolah.dinas).toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
+  currentY += 4.5;
+
+  doc.setFontSize(13);
+  doc.setTextColor(15, 23, 42);
+  doc.text((kop.namaSekolah || defaultKopSekolah.namaSekolah).toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
+  currentY += 4.5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(80, 80, 80);
+  doc.text(kop.alamat || defaultKopSekolah.alamat, pageWidth / 2, currentY, { align: 'center' });
+  currentY += 3.5;
+
+  if (kop.teleponWeb) {
+    doc.setFontSize(7.5);
+    doc.text(kop.teleponWeb, pageWidth / 2, currentY, { align: 'center' });
+    currentY += 3.5;
+  }
+
+  // Double Line Divider
+  currentY += 1.5;
+  doc.setLineWidth(0.8);
+  doc.setDrawColor(15, 23, 42);
+  doc.line(12, currentY, pageWidth - 12, currentY);
+  currentY += 1;
+  doc.setLineWidth(0.2);
+  doc.line(12, currentY, pageWidth - 12, currentY);
+  currentY += 5;
+
+  // 2. JUDUL LAPORAN
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('LAPORAN ANALISIS BUTIR SOAL (ITEM ANALYSIS)', pageWidth / 2, currentY, { align: 'center' });
+  currentY += 4.5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(50, 50, 50);
+  doc.text(`${examInfo.mapelTitle || 'Assessment TKA'} - Mata Pelajaran: ${examInfo.mapel || 'Sosiologi'} | Total Responden: ${examInfo.totalRespondents} Siswa | Jumlah Soal: ${examInfo.totalQuestions}`, pageWidth / 2, currentY, { align: 'center' });
+  currentY += 5.5;
+
+  // 3. TABLE ANALISIS BUTIR SOAL
+  const tableHead = [
+    ['No', 'Pertanyaan Soal', 'Kunci', 'Sebaran Jawaban (A/B/C/D/E/Kosong)', 'Benar', 'Salah', 'P (Kesukaran)', 'Kategori P', 'D (Daya Beda)', 'Rekomendasi']
+  ];
+
+  const tableBody = items.map((item) => [
+    item.questionNumber,
+    item.questionText.length > 60 ? item.questionText.slice(0, 58) + '...' : item.questionText,
+    item.keyOption,
+    `A:${item.countA} | B:${item.countB} | C:${item.countC} | D:${item.countD} | E:${item.countE} | Kosong:${item.countEmpty}`,
+    item.totalCorrect,
+    item.totalIncorrect,
+    item.difficultyIndex.toFixed(2),
+    item.difficultyCategory,
+    item.discriminationIndex.toFixed(2),
+    item.recommendation,
+  ]);
+
+  autoTable(doc, {
+    startY: currentY,
+    head: tableHead,
+    body: tableBody,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [15, 23, 42],
+      textColor: [255, 255, 255],
+      fontSize: 8,
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle',
+    },
+    bodyStyles: {
+      fontSize: 7.5,
+      textColor: [30, 41, 59],
+      valign: 'middle',
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { cellWidth: 85 },
+      2: { halign: 'center', cellWidth: 14 },
+      3: { halign: 'center', cellWidth: 65 },
+      4: { halign: 'center', cellWidth: 14 },
+      5: { halign: 'center', cellWidth: 14 },
+      6: { halign: 'center', cellWidth: 20 },
+      7: { halign: 'center', cellWidth: 20 },
+      8: { halign: 'center', cellWidth: 20 },
+      9: { halign: 'center', cellWidth: 22 },
+    },
+    margin: { left: 12, right: 12 },
+  });
+
+  let finalY = (doc as any).lastAutoTable.finalY + 10;
+
+  if (finalY > 170) {
+    doc.addPage();
+    finalY = 20;
+  }
+
+  // 4. SIGNATURE BLOCK
+  const rightX = pageWidth - 70;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(30, 30, 30);
+
+  const tglStr = kop.kotaTanggal || defaultKopSekolah.kotaTanggal;
+  doc.text(tglStr, rightX, finalY);
+  doc.text(kop.jabatanGuru || defaultKopSekolah.jabatanGuru, rightX, finalY + 4);
+
+  const nameY = finalY + 4 + 18;
+  doc.setFont('helvetica', 'bold');
+  doc.text(kop.namaGuru || defaultKopSekolah.namaGuru, rightX, nameY);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(`NIP. ${kop.nipGuru || defaultKopSekolah.nipGuru}`, rightX, nameY + 3.5);
+
+  const cleanMapel = examInfo.mapel.replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`ANALISIS_BUTIR_SOAL_${cleanMapel}_${Date.now()}.pdf`);
+}
+
