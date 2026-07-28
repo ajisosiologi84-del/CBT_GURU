@@ -84,6 +84,7 @@ export interface StudentResult {
   answers: (string | null)[];
   warnings: number;
   submittedAt: string;
+  questionSnapshots?: Question[];
 }
 
 export interface EncryptedResultPayload {

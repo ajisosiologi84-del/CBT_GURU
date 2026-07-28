@@ -695,7 +695,8 @@ export function exportOfflineAppHtml(config: AppConfig): void {
         isPassed: isPassed,
         answers: userAnswers,
         warnings: warningsCount,
-        submittedAt: new Date().toLocaleString('id-ID')
+        submittedAt: new Date().toLocaleString('id-ID'),
+        questionSnapshots: activeQuestions
       };
 
       testScreen.classList.add('hidden');

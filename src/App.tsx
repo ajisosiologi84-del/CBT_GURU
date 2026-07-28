@@ -487,6 +487,7 @@ export default function App() {
       answers: userAnswers,
       warnings,
       submittedAt: new Date().toLocaleString('id-ID'),
+      questionSnapshots: activeQuestions,
     };
 
     setFinalScore(score);

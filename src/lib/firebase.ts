@@ -40,13 +40,20 @@ const TEACHERS_COLLECTION = 'teacher_accounts';
 let isQuotaExceeded = false;
 
 function handleFirestoreError(context: string, error: any) {
-  if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota limit exceeded')) {
+  const errCode = error?.code || '';
+  const errMsg = String(error?.message || error || '');
+  if (
+    errCode === 'resource-exhausted' ||
+    errCode === 'unavailable' ||
+    errMsg.toLowerCase().includes('quota') ||
+    errMsg.toLowerCase().includes('resource-exhausted')
+  ) {
     if (!isQuotaExceeded) {
       isQuotaExceeded = true;
-      console.warn(`[Firebase Firestore] Quota harian tercapai (${context}). Aplikasi beralih ke mode penyimpanan lokal (LocalStorage).`);
+      console.warn(`[Firebase Firestore] Quota limit reached or unavailable (${context}). Switched to LocalStorage mode.`);
     }
   } else {
-    console.warn(`[Firebase Firestore] Notice (${context}):`, error?.message || error);
+    console.warn(`[Firebase Firestore] Notice (${context}):`, errMsg);
   }
 }
 
@@ -92,8 +99,9 @@ export async function loadConfigFromFirebase(): Promise<AppConfig | null> {
 export function subscribeConfigFromFirebase(onUpdate: (config: AppConfig) => void): () => void {
   if (isQuotaExceeded) return () => {};
   const docRef = doc(db, CONFIG_COLLECTION, CONFIG_DOC_ID);
-  let unsubscribe: () => void = () => {};
-  unsubscribe = onSnapshot(docRef, (snap) => {
+  let unsubFn: (() => void) | null = null;
+  
+  unsubFn = onSnapshot(docRef, (snap) => {
     if (snap.exists()) {
       const data = snap.data() as AppConfig;
       if (data && data.questions) {
@@ -102,16 +110,15 @@ export function subscribeConfigFromFirebase(onUpdate: (config: AppConfig) => voi
     }
   }, (err) => {
     handleFirestoreError('subscribeConfig', err);
-    if (err?.code === 'resource-exhausted' || err?.message?.includes('Quota limit exceeded')) {
-      try {
-        if (unsubscribe) unsubscribe();
-      } catch (e) {}
+    if (unsubFn) {
+      try { unsubFn(); } catch (e) {}
     }
   });
+
   return () => {
-    try {
-      if (unsubscribe) unsubscribe();
-    } catch (e) {}
+    if (unsubFn) {
+      try { unsubFn(); } catch (e) {}
+    }
   };
 }
 
@@ -172,8 +179,9 @@ export async function deleteSelectedStudentResultsFromFirebase(idsToDelete: stri
  */
 export function subscribeStudentResultsFromFirebase(onUpdate: (results: StudentResult[]) => void): () => void {
   if (isQuotaExceeded) return () => {};
-  let unsubscribe: () => void = () => {};
-  unsubscribe = onSnapshot(collection(db, RESULTS_COLLECTION), (querySnap) => {
+  let unsubFn: (() => void) | null = null;
+
+  unsubFn = onSnapshot(collection(db, RESULTS_COLLECTION), (querySnap) => {
     const list: StudentResult[] = [];
     querySnap.forEach((docSnap) => {
       list.push(docSnap.data() as StudentResult);
@@ -181,16 +189,15 @@ export function subscribeStudentResultsFromFirebase(onUpdate: (results: StudentR
     onUpdate(list);
   }, (err) => {
     handleFirestoreError('subscribeStudentResults', err);
-    if (err?.code === 'resource-exhausted' || err?.message?.includes('Quota limit exceeded')) {
-      try {
-        if (unsubscribe) unsubscribe();
-      } catch (e) {}
+    if (unsubFn) {
+      try { unsubFn(); } catch (e) {}
     }
   });
+
   return () => {
-    try {
-      if (unsubscribe) unsubscribe();
-    } catch (e) {}
+    if (unsubFn) {
+      try { unsubFn(); } catch (e) {}
+    }
   };
 }
 
