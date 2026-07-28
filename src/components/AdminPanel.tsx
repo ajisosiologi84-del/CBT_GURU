@@ -265,15 +265,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleExportActivePaketJson = () => {
     try {
-      const activeQuestions = config.questions.filter((q) => q.isActive !== false);
+      const activeMapel = config.mapel || 'Sosiologi';
+      const activeQuestions = config.questions.filter((q) => {
+        const isThisMapel = q.mapel ? q.mapel === activeMapel : true;
+        const isActive = q.isActive !== false;
+        return isThisMapel && isActive;
+      });
+
       const packagePayload = {
-        appName: 'CBT_GURUAI_PAKET_SOAL',
+        appName: 'CBT_GURUAI',
         version: '2.0',
         exportedAt: new Date().toISOString(),
         config: {
           ...config,
+          mapel: activeMapel,
           questions: activeQuestions,
         },
+        studentResults,
       };
 
       const encryptedContent = encryptAppBackup(packagePayload);
@@ -283,7 +291,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
-      const mapelClean = (config.mapel || 'CBT').replace(/[^a-zA-Z0-9]/g, '_');
+      const mapelClean = activeMapel.replace(/[^a-zA-Z0-9]/g, '_');
 
       link.href = url;
       link.download = `PAKET_SOAL_${mapelClean}_${config.examToken || 'TOKEN'}_${dateStr}_${timeStr}.json`;
@@ -292,7 +300,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showAlert(`Paket Soal Aktif "${config.mapel || 'CBT'}" (${activeQuestions.length} Soal - Token: "${config.examToken || '-'}") berhasil dieksport sebagai file JSON terenkripsi!`);
+      showAlert(`Paket Soal Aktif "${activeMapel}" (${activeQuestions.length} Soal - Token: "${config.examToken || '-'}") berhasil dieksport sebagai file JSON backup terenkripsi!`);
     } catch (e) {
       console.error(e);
       showAlert('Gagal membuat paket soal aktif!');
