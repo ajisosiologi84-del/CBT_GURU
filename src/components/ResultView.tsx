@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, ShieldCheck, CheckCircle2, LogOut } from 'lucide-react';
+import { Download, ShieldCheck, CheckCircle2, LogOut, UploadCloud, ExternalLink } from 'lucide-react';
 
 interface ResultViewProps {
   score: number;
@@ -8,6 +8,7 @@ interface ResultViewProps {
   kkm: number;
   studentName: string;
   noPeserta: string;
+  driveUploadUrl?: string;
   onDownloadEncryptedResult: () => void;
   onViewDiscussion?: () => void;
   onRestart: () => void;
@@ -16,6 +17,7 @@ interface ResultViewProps {
 export const ResultView: React.FC<ResultViewProps> = ({
   studentName,
   noPeserta,
+  driveUploadUrl,
   onDownloadEncryptedResult,
   onRestart,
 }) => {
@@ -63,6 +65,38 @@ export const ResultView: React.FC<ResultViewProps> = ({
             <Download className="w-4 h-4" /> Unduh File Jawaban (.cbt)
           </button>
         </div>
+
+        {/* Upload Hasil Jawaban Google Drive Banner */}
+        {driveUploadUrl ? (
+          <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-5 rounded-2xl shadow-md text-left space-y-3 border border-indigo-700/60">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                <UploadCloud className="w-4 h-4 text-indigo-400" /> Upload Hasil Jawaban (Google Drive)
+              </p>
+              <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+            </div>
+            <p className="text-xs text-indigo-200 leading-relaxed">
+              Setelah mengunduh file <b>.cbt</b> di atas, klik tombol di bawah ini untuk mengunggah file jawaban Anda ke folder Google Drive yang telah disediakan Guru.
+            </p>
+            <a
+              href={driveUploadUrl.startsWith('http') ? driveUploadUrl : `https://${driveUploadUrl}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold py-3 px-5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-xs active:scale-95 cursor-pointer block text-center"
+            >
+              <UploadCloud className="w-4 h-4" /> Buka Google Drive &amp; Upload File Jawaban (.cbt)
+            </a>
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-left space-y-1.5">
+            <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <UploadCloud className="w-4 h-4 text-slate-500" /> Upload Link Google Drive
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Link upload Google Drive belum dikonfigurasi oleh Admin. Serahkan file <b>.cbt</b> yang diunduh langsung kepada Guru/Pengawas.
+            </p>
+          </div>
+        )}
 
         {/* Exit Action */}
         <div className="space-y-2 pt-1">

@@ -25,11 +25,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [nis, setNis] = useState('');
   const [tokenInput, setTokenInput] = useState('');
 
-  // Self-Registration Fallback for unlisted NIS
-  const [unlistedNis, setUnlistedNis] = useState<string | null>(null);
-  const [customNama, setCustomNama] = useState('');
-  const [customKelas, setCustomKelas] = useState('');
-
   // Admin Login Fields
   const [adminUser, setAdminUser] = useState('');
   const [adminPass, setAdminPass] = useState('');
@@ -110,8 +105,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     );
 
     if (!foundStudent) {
-      // NIS not listed, prompt student self-registration fallback
-      setUnlistedNis(trimmedNis);
+      triggerError(`NIS / No. Peserta "${trimmedNis}" TIDAK TERDAFTAR dalam data akun siswa! Hanya siswa terdaftar yang dapat mengikuti ujian. Harap hubungi Guru / Admin untuk mendaftarkan akun Anda.`);
       return;
     }
 
@@ -125,41 +119,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
     const studentInfo: StudentInfo = {
       name: foundStudent.nama,
       noPeserta: `${foundStudent.nis} (${foundStudent.kelas})`,
-      mapel: currentMapelStr,
-      role: 'student',
-    };
-
-    onStudentLoginSuccess(studentInfo);
-  };
-
-  const handleSelfRegisterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customNama.trim()) {
-      triggerError('Harap masukkan Nama Lengkap Anda!');
-      return;
-    }
-
-    const newStudent: StudentUser = {
-      id: 'st_self_' + Date.now(),
-      nis: unlistedNis || '1001',
-      nama: customNama.trim(),
-      kelas: customKelas.trim() || 'Umum/Mandiri',
-      isActive: true,
-    };
-
-    // Save to config if possible
-    if (onSaveConfig) {
-      onSaveConfig({
-        ...config,
-        students: [...config.students, newStudent],
-      });
-    }
-
-    const currentMapelStr = `${config.mapel || 'Sosiologi'} (${config.mapelTitle || 'Assessment TKA 2026'})`;
-
-    const studentInfo: StudentInfo = {
-      name: newStudent.nama,
-      noPeserta: `${newStudent.nis} (${newStudent.kelas})`,
       mapel: currentMapelStr,
       role: 'student',
     };
@@ -240,7 +199,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               setActiveMode('student');
               setErrorMsg('');
               setSuccessMsg('');
-              setUnlistedNis(null);
             }}
             className={`flex-1 py-2 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center justify-center gap-1.5 ${
               activeMode === 'student'
@@ -283,57 +241,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </div>
           )}
 
-          {/* FALLBACK FORM FOR UNLISTED NIS */}
-          {unlistedNis ? (
-            <form onSubmit={handleSelfRegisterSubmit} className="space-y-3 bg-amber-50 p-4 rounded-2xl border border-amber-200 text-amber-900 animate-fade-in">
-              <div className="text-xs font-bold flex items-center gap-1.5 text-amber-900 border-b border-amber-200 pb-2">
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                Registrasi Siswa Mandiri (NIS: {unlistedNis})
-              </div>
-              <p className="text-[11px] text-amber-800">
-                NIS <b>{unlistedNis}</b> belum ada di daftar. Masukkan Nama Lengkap Anda untuk langsung mengikuti ujian:
-              </p>
-
-              <div>
-                <label className="block text-gray-700 text-[11px] font-bold uppercase mb-1">Nama Lengkap Siswa</label>
-                <input
-                  type="text"
-                  required
-                  value={customNama}
-                  onChange={(e) => setCustomNama(e.target.value)}
-                  placeholder="Contoh: Muhammad Budi"
-                  className="w-full px-3 py-2 border border-amber-300 rounded-xl bg-white text-xs font-bold focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-gray-700 text-[11px] font-bold uppercase mb-1">Kelas (Opsional)</label>
-                <input
-                  type="text"
-                  value={customKelas}
-                  onChange={(e) => setCustomKelas(e.target.value)}
-                  placeholder="Contoh: XII IPS 2"
-                  className="w-full px-3 py-2 border border-amber-300 rounded-xl bg-white text-xs font-bold focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setUnlistedNis(null)}
-                  className="flex-1 bg-white border border-amber-300 text-amber-900 font-bold py-2 rounded-xl text-xs hover:bg-amber-100 cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-xl text-xs shadow-sm cursor-pointer"
-                >
-                  Masuk Ujian
-                </button>
-              </div>
-            </form>
-          ) : activeMode === 'student' ? (
+          {activeMode === 'student' ? (
             /* Student Form with NIS & TOKEN */
             <form onSubmit={handleStudentSubmit} className="space-y-3.5">
               <div>
@@ -510,8 +418,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 </ol>
               </div>
 
-              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-900 font-medium">
-                ✅ <b>Fitur Auto-Registrasi Siswa:</b> Jika Token Ujian sudah benar, siswa yang NIS-nya belum sempat didaftarkan Guru tetap dapat masuk secara otomatis dengan mengisi Nama Lengkap.
+              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-900 font-medium text-xs">
+                🔒 <b>Keamanan Akses Ujian:</b> Hanya siswa yang NIS / No. Pesertanya telah didaftarkan oleh Guru / Admin di Panel Manajemen Siswa yang dapat mengikuti ujian aktif.
               </div>
             </div>
 

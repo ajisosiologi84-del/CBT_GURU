@@ -60,6 +60,7 @@ export interface AppConfig {
   kopSekolah?: KopSekolahConfig; // Pengaturan Kop Sekolah & Tanda Tangan Guru
   adminUsername?: string; // Username Admin Utama (default: 'admincbt')
   adminPassword?: string; // Password Admin Utama (default: 'JuniorCBT2026')
+  driveUploadUrl?: string; // Link Google Drive untuk Upload Hasil Jawaban Siswa
 }
 
 export type ViewState = 'login' | 'admin' | 'pre-test' | 'test' | 'result' | 'review';

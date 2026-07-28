@@ -665,6 +665,7 @@ export default function App() {
           kkm={config.kkm}
           studentName={studentInfo.name}
           noPeserta={studentInfo.noPeserta}
+          driveUploadUrl={config.driveUploadUrl}
           onDownloadEncryptedResult={handleDownloadEncryptedResult}
           onViewDiscussion={() => setViewState('review')}
           onRestart={() => setViewState('login')}

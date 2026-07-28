@@ -115,6 +115,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [subTitleInput, setSubTitleInput] = useState<string>(
     config.subTitle || 'Perubahan Sosial & Globalisasi'
   );
+  const [driveUploadUrlInput, setDriveUploadUrlInput] = useState<string>(
+    config.driveUploadUrl || ''
+  );
   const [mapelList, setMapelList] = useState<string[]>(
     config.mapelList && config.mapelList.length > 0 ? config.mapelList : defaultMapelList
   );
@@ -397,6 +400,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       mapel: trimmedMapel,
       mapelTitle: finalTitle,
       subTitle: finalSubTitle,
+      driveUploadUrl: driveUploadUrlInput.trim(),
       mapelList: updatedList,
     });
     showAlert(`Pengaturan Mata Pelajaran "${trimmedMapel}" berhasil disimpan!`);
@@ -1550,6 +1554,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         placeholder="Contoh: Perubahan Sosial & Globalisasi"
                         className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 font-bold focus:ring-2 focus:ring-sky-500 focus:outline-none"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center justify-between">
+                        <span>Link Upload Google Drive (Hasil Jawaban Siswa)</span>
+                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-black">Terhubung ke Siswa</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={driveUploadUrlInput}
+                        onChange={(e) => setDriveUploadUrlInput(e.target.value)}
+                        placeholder="Contoh: https://drive.google.com/drive/folders/... atau https://forms.gle/..."
+                        className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 font-bold focus:ring-2 focus:ring-sky-500 focus:outline-none"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Siswa akan melihat tombol &quot;Upload Hasil Jawaban (Google Drive)&quot; pada halaman akhir setelah ujian selesai untuk mengunggah file hasil (.cbt) mereka.
+                      </p>
                     </div>
 
                     <button
