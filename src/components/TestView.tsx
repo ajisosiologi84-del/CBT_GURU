@@ -93,7 +93,7 @@ export const TestView: React.FC<TestViewProps> = ({
           </div>
           <div className="min-w-0">
             <h1 className="font-bold text-xs sm:text-base leading-tight text-gray-800 truncate">
-              {mapelTitle || `CBT ${mapel || 'Sosiologi'} Assessment TKA`}
+              {mapelTitle || `CBT ${mapel || 'Siswa'} Assessment TKA SMA`}
             </h1>
             <p className="text-[10px] sm:text-xs text-gray-500 font-medium truncate hidden sm:block">
               {subTitle || 'Perubahan Sosial & Globalisasi'}

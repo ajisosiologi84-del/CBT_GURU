@@ -136,7 +136,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     const uLower = u.toLowerCase();
 
     if (!u || !p) {
-      triggerError('Harap isi Username/NIP dan Password!');
+      triggerError('Harap isi Username dan Password!');
       return;
     }
 
@@ -163,7 +163,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       return;
     }
 
-    triggerError('Otentikasi Gagal! Username/NIP atau Password yang Anda masukkan tidak sesuai.');
+    triggerError('Otentikasi Gagal! Username atau Password yang Anda masukkan tidak sesuai.');
   };
 
   return (
@@ -177,9 +177,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
         <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 p-6 text-center text-white relative overflow-hidden flex flex-col items-center justify-center">
           <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
           <CbtLogo className="w-20 h-20 mb-2 drop-shadow-md" />
-          <h1 className="text-xl font-black tracking-tight">Portal CBT Mandiri</h1>
+          <h1 className="text-xl font-black tracking-tight">Portal CBT Guru</h1>
           <p className="text-blue-200 text-xs mt-0.5 font-medium">
-            {config.mapel || 'Sosiologi'} - {config.mapelTitle || 'Assessment TKA SMA 2026'}
+            {config.mapel || 'Mata Pelajaran'} - {config.mapelTitle || 'Assessment TKA SMA 2026'}
           </p>
 
           {/* Import JSON Quick Bar */}
@@ -294,7 +294,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <form onSubmit={handleAdminSubmit} className="space-y-3.5">
               <div>
                 <label className="block text-gray-700 text-xs font-bold uppercase tracking-wider mb-1" htmlFor="adminUser">
-                  Username / NIP Guru
+                  Username
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
@@ -305,7 +305,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     type="text"
                     value={adminUser}
                     onChange={(e) => setAdminUser(e.target.value)}
-                    placeholder="Masukkan Username / NIP Guru"
+                    placeholder="Masukkan Username"
                     className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors text-sm font-semibold"
                   />
                 </div>
@@ -362,12 +362,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </button>
           </div>
 
-          <p className="text-center text-[11px] text-gray-400 pt-1">
+          <div className="text-center text-[11px] text-gray-400 pt-1 flex items-center justify-center gap-1.5 flex-wrap">
             <a href="https://lynk.id/ajisosiologi" target="_blank" rel="noopener noreferrer" className="hover:underline font-bold text-blue-600">
               @ajisosiologi
             </a>{' '}
-            - Secure CBT System
-          </p>
+            <span>- Secure CBT System</span>
+            <span className="bg-slate-100 text-slate-600 font-mono font-bold text-[10px] px-2 py-0.5 rounded-md border border-slate-200">
+              v2.0.0
+            </span>
+          </div>
         </div>
       </div>
 

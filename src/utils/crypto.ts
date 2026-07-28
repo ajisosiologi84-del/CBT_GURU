@@ -71,7 +71,7 @@ export function decryptResult(encryptedContent: string): StudentResult {
   try {
     container = JSON.parse(cleanContent);
   } catch (e) {
-    throw new Error('Format file tidak dikenali. File harus berupa file .cbt resmi dari CBT Sosiologi!');
+    throw new Error('Format file tidak dikenali. File harus berupa file .cbt resmi dari CBT Guru!');
   }
 
   // Case 1: Direct StudentResult JSON (if unencrypted json file uploaded)
@@ -81,7 +81,7 @@ export function decryptResult(encryptedContent: string): StudentResult {
 
   // Case 2: Standard CBT Encrypted Container
   if (!container || container.cbtHeader !== 'CBT_SOSIOLOGI_2026_ENCRYPTED_FILE' || !container.payload) {
-    throw new Error('File bukan merupakan file jawaban CBT Sosiologi resmi yang terenkripsi!');
+    throw new Error('File bukan merupakan file jawaban CBT Guru resmi yang terenkripsi!');
   }
 
   const base64Cipher = container.payload;

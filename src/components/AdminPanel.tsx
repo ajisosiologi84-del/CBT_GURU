@@ -117,7 +117,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   ];
   const [mapelInput, setMapelInput] = useState<string>(config.mapel || 'Sosiologi');
   const [mapelTitleInput, setMapelTitleInput] = useState<string>(
-    config.mapelTitle || 'Assessment TKA Sosiologi SMA'
+    config.mapelTitle || 'Assessment TKA SMA'
   );
   const [subTitleInput, setSubTitleInput] = useState<string>(
     config.subTitle || 'Perubahan Sosial & Globalisasi'
@@ -1426,7 +1426,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       config.kopSekolah || defaultKopSekolah,
       {
         mapel: analisisMapelFilter !== 'ALL' ? analisisMapelFilter : (config.mapel || 'Sosiologi'),
-        mapelTitle: config.mapelTitle || 'Assessment TKA Sosiologi SMA',
+        mapelTitle: config.mapelTitle || 'Assessment TKA SMA',
         totalQuestions: rawItemAnalysisList.length,
         totalRespondents: studentResults.length,
       }
@@ -1706,11 +1706,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-400">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="font-semibold text-slate-300">CBT Standalone Server</span>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              <span className="font-semibold text-slate-300">CBT Standalone Server</span>
+            </div>
+            <span className="bg-slate-800 text-teal-400 font-mono font-bold text-[10px] px-2 py-0.5 rounded border border-slate-700">
+              v2.0.0
+            </span>
           </div>
-          <p className="text-[10px] text-slate-500 mt-0.5">Assessment TKA SMA</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Assessment TKA SMA - Panel Guru</p>
         </div>
       </aside>
 
@@ -2892,7 +2897,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <span className="text-indigo-600 font-black">{teachersList.length}</span>)
                   </h2>
                   <p className="text-xs text-gray-500 mt-1">
-                    Kelola daftar guru pengampu. Guru dapat login menggunakan <b>NIP</b> sebagai username & password.
+                    Kelola daftar guru pengampu. Guru dapat login menggunakan <b>Username</b> sebagai akun akses.
                   </p>
                 </div>
 
@@ -2937,7 +2942,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       type="text"
                       value={teacherSearch}
                       onChange={(e) => setTeacherSearch(e.target.value)}
-                      placeholder="Cari NIP / Nama / Mapel..."
+                      placeholder="Cari Username / Nama / Mapel..."
                       className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
                     />
                   </div>
@@ -2948,7 +2953,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <thead>
                       <tr className="border-b border-gray-200 bg-slate-50 text-gray-600 text-[11px] font-bold uppercase tracking-wider">
                         <th className="p-3">No</th>
-                        <th className="p-3">NIP (Nomor Induk Pegawai)</th>
+                        <th className="p-3">Username</th>
                         <th className="p-3">Nama Lengkap Guru</th>
                         <th className="p-3">Mata Pelajaran</th>
                         {adminRole !== 'teacher' && <th className="p-3 text-center">Aksi</th>}
@@ -3209,7 +3214,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     config.kopSekolah || defaultKopSekolah,
                     {
                       mapel: config.mapel || 'Sosiologi',
-                      mapelTitle: config.mapelTitle || 'Assessment TKA Sosiologi SMA',
+                      mapelTitle: config.mapelTitle || 'Assessment TKA SMA',
                       kkm: config.kkm,
                       totalQuestions: config.questions.length,
                     }
@@ -3957,13 +3962,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <form onSubmit={handleAddTeacherManual} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
-                  NIP (Nomor Induk Pegawai) <span className="text-red-500">*</span>
+                  Username <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={newNip}
                   onChange={(e) => setNewNip(e.target.value)}
-                  placeholder="Contoh: 198501152010011002"
+                  placeholder="Contoh: guru_cbt / 198501152010011002"
                   required
                   className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
                 />

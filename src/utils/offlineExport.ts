@@ -197,7 +197,7 @@ export function exportOfflineAppHtml(config: AppConfig): void {
         <p class="text-center text-[11px] text-slate-400 border-t border-slate-100 pt-3">
           <a href="https://lynk.id/ajisosiologi" target="_blank" rel="noopener noreferrer" class="hover:underline font-bold text-blue-600">
             @ajisosiologi
-          </a> - Standalone Offline CBT Sosiologi
+          </a> - Standalone Offline CBT Guru v2.0.0
         </p>
       </div>
     </div>

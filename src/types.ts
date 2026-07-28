@@ -50,7 +50,7 @@ export interface AppConfig {
   students: StudentUser[]; // Daftar user/siswa terdaftar
   teachers?: TeacherUser[]; // Daftar user/guru terdaftar
   mapel?: string; // e.g. 'Sosiologi'
-  mapelTitle?: string; // e.g. 'Assessment TKA Sosiologi SMA'
+  mapelTitle?: string; // e.g. 'Assessment TKA SMA'
   subTitle?: string; // e.g. 'Perubahan Sosial & Globalisasi'
   mapelList?: string[]; // Pilihan daftar mata pelajaran
   maxQuestionsToDisplay?: number; // Jumlah soal yang dikeluarkan/ditampilkan untuk ujian (0 = semua)
