@@ -33,6 +33,7 @@ export default function App() {
         if (parsed && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
           return {
             ...parsed,
+            kodeGuru: parsed.kodeGuru || 'GURU01',
             examToken: parsed.examToken || 'SOS2026',
             students: Array.isArray(parsed.students) ? parsed.students : defaultStudents,
             maxQuestionsToDisplay: typeof parsed.maxQuestionsToDisplay === 'number' ? parsed.maxQuestionsToDisplay : 0,
@@ -52,10 +53,11 @@ export default function App() {
       kkm: 75,
       questions: defaultQuestions,
       examToken: 'SOS2026',
+      kodeGuru: 'GURU01',
       students: defaultStudents,
       teachers: [
-        { id: 't1', nip: '198501152010011002', nama: 'Drs. Aji Sosiologi, M.Pd', mapel: 'Sosiologi' },
-        { id: 't2', nip: '198803202012022005', nama: 'Siti Rahmawati, S.Pd', mapel: 'Sosiologi' },
+        { id: 't1', nip: '198501152010011002', nama: 'Drs. Aji Sosiologi, M.Pd', mapel: 'Sosiologi', kodeGuru: 'GURU01' },
+        { id: 't2', nip: '198803202012022005', nama: 'Siti Rahmawati, S.Pd', mapel: 'Sosiologi', kodeGuru: 'GURU02' },
       ],
       maxQuestionsToDisplay: 0,
       maxAttempts: 1,
@@ -569,6 +571,7 @@ export default function App() {
     image?: string;
     mapel?: string;
     subTopik?: string;
+    kodeGuru?: string;
     id?: number;
   }) => {
     let updatedQuestions = [...config.questions];
@@ -585,6 +588,7 @@ export default function App() {
           image: qData.image,
           mapel: qData.mapel || updatedQuestions[idx].mapel || config.mapel || 'Sosiologi',
           subTopik: qData.subTopik,
+          kodeGuru: qData.kodeGuru || updatedQuestions[idx].kodeGuru || config.kodeGuru || 'GURU01',
         };
       }
     } else {
@@ -598,6 +602,7 @@ export default function App() {
         image: qData.image,
         mapel: qData.mapel || config.mapel || 'Sosiologi',
         subTopik: qData.subTopik,
+        kodeGuru: qData.kodeGuru || config.kodeGuru || 'GURU01',
       });
     }
 
@@ -751,6 +756,7 @@ export default function App() {
         editingQuestion={editingQuestion}
         mapelList={config.mapelList}
         defaultMapel={config.mapel}
+        defaultKodeGuru={config.kodeGuru || 'GURU01'}
         onSave={handleSaveQuestion}
         onClose={() => {
           setIsQuestionModalOpen(false);

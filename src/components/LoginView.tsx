@@ -129,6 +129,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       name: foundStudent.nama,
       noPeserta: `${foundStudent.nis} (${foundStudent.kelas})`,
       mapel: currentMapelStr,
+      kodeGuru: foundStudent.kodeGuru || config.kodeGuru || 'GURU01',
       role: 'student',
     };
 
@@ -195,10 +196,19 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </p>
 
               {/* Import JSON Quick Bar */}
-              <div className="mt-3 inline-flex items-center gap-1.5 bg-indigo-950/70 border border-indigo-700/60 rounded-full px-3 py-1 text-[11px]">
-                <span className="text-indigo-200 font-medium">Token Aktif:</span>
-                <span className="font-mono font-bold text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/40">
-                  {config.examToken || 'SOS2026'}
+              <div className="mt-3 inline-flex items-center gap-2 bg-indigo-950/80 border border-indigo-700/60 rounded-full px-3.5 py-1 text-[11px] flex-wrap justify-center">
+                <span className="flex items-center gap-1">
+                  <span className="text-indigo-200 font-medium">Kode Guru:</span>
+                  <span className="font-mono font-black text-sky-300 bg-sky-950/70 px-2 py-0.5 rounded border border-sky-500/50">
+                    {config.kodeGuru || 'GURU01'}
+                  </span>
+                </span>
+                <span className="text-indigo-400 font-bold">•</span>
+                <span className="flex items-center gap-1">
+                  <span className="text-indigo-200 font-medium">Token:</span>
+                  <span className="font-mono font-bold text-amber-300 bg-amber-950/70 px-2 py-0.5 rounded border border-amber-500/50">
+                    {config.examToken || 'SOS2026'}
+                  </span>
                 </span>
               </div>
             </div>

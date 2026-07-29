@@ -13,6 +13,7 @@ export interface Question {
   isActive?: boolean; // Default true, toggle to enable/disable for exam
   mapel?: string; // Mata pelajaran (e.g. 'Sosiologi', 'Geografi', etc.)
   subTopik?: string; // Sub Topik / Materi Ujian (e.g. 'Perubahan Sosial', 'Globalisasi', dll)
+  kodeGuru?: string; // Kode Guru Pengampu (e.g. 'GURU01', 'GR-AJI')
 }
 
 export interface StudentUser {
@@ -21,6 +22,7 @@ export interface StudentUser {
   nama: string;
   kelas: string;
   isActive?: boolean; // Status aktif mengikuti ujian (default true)
+  kodeGuru?: string; // Kode Guru Pengampu / Penanda Guru (e.g. 'GURU01')
 }
 
 export interface TeacherUser {
@@ -28,6 +30,7 @@ export interface TeacherUser {
   nip: string;
   nama: string;
   mapel: string;
+  kodeGuru?: string; // Kode unik Guru Pengampu
 }
 
 export interface KopSekolahConfig {
@@ -39,6 +42,7 @@ export interface KopSekolahConfig {
   namaGuru: string; // e.g. "Drs. Aji Sosiologi, M.Pd"
   nipGuru: string; // e.g. "198501152010011002"
   jabatanGuru: string; // e.g. "Guru Mata Pelajaran Sosiologi"
+  kodeGuru?: string; // e.g. "GURU01"
   namaKepalaSekolah?: string; // e.g. "Dr. H. Ahmad Sanusi, M.Si"
   nipKepalaSekolah?: string; // e.g. "197203101998021001"
 }
@@ -68,6 +72,7 @@ export interface AppConfig {
   students: StudentUser[]; // Daftar user/siswa terdaftar
   teachers?: TeacherUser[]; // Daftar user/guru terdaftar
   mapel?: string; // e.g. 'Sosiologi'
+  kodeGuru?: string; // e.g. 'GURU01' / 'G01' - Kode unik Guru Pengampu
   mapelTitle?: string; // e.g. 'Assessment TKA SMA'
   subTitle?: string; // e.g. 'Perubahan Sosial & Globalisasi'
   mapelList?: string[]; // Pilihan daftar mata pelajaran
@@ -79,6 +84,7 @@ export interface AppConfig {
   adminUsername?: string; // Username Admin Utama (default: 'admincbt')
   adminPassword?: string; // Password Admin Utama (default: 'JuniorCBT2026')
   driveUploadUrl?: string; // Link Google Drive untuk Upload Hasil Jawaban Siswa
+  youtubeGuideUrl?: string; // Link Video YouTube Panduan Guru (dikeloa Admin)
   examSchedule?: ExamScheduleConfig; // Detail Pengaturan Jadwal & Ketentuan Ujian
 }
 
@@ -88,6 +94,7 @@ export interface StudentInfo {
   name: string;
   noPeserta: string;
   mapel: string;
+  kodeGuru?: string;
   role?: 'student' | 'teacher';
 }
 

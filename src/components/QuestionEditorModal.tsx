@@ -8,6 +8,7 @@ interface QuestionEditorModalProps {
   editingQuestion: Question | null;
   mapelList?: string[];
   defaultMapel?: string;
+  defaultKodeGuru?: string;
   onSave: (questionData: {
     question: string;
     options: Option[];
@@ -15,6 +16,7 @@ interface QuestionEditorModalProps {
     image?: string;
     mapel?: string;
     subTopik?: string;
+    kodeGuru?: string;
     id?: number;
   }) => void;
   onClose: () => void;
@@ -26,6 +28,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
   editingQuestion,
   mapelList = ['Sosiologi', 'Geografi', 'Ekonomi', 'Sejarah', 'Bahasa Indonesia', 'Bahasa Inggris', 'Matematika'],
   defaultMapel = 'Sosiologi',
+  defaultKodeGuru = 'GURU01',
   onSave,
   onClose,
   showAlert,
@@ -34,6 +37,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
   const [explanationText, setExplanationText] = useState('');
   const [selectedMapel, setSelectedMapel] = useState<string>(defaultMapel);
   const [subTopikText, setSubTopikText] = useState<string>('');
+  const [kodeGuruText, setKodeGuruText] = useState<string>(defaultKodeGuru);
   const [imageString, setImageString] = useState<string>('');
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState('');
@@ -50,6 +54,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       setExplanationText(editingQuestion.explanation || '');
       setSelectedMapel(editingQuestion.mapel || defaultMapel);
       setSubTopikText(editingQuestion.subTopik || '');
+      setKodeGuruText(editingQuestion.kodeGuru || defaultKodeGuru || 'GURU01');
       setImageString(editingQuestion.image || '');
       setImageUrlInput(editingQuestion.image && !editingQuestion.image.startsWith('data:') ? editingQuestion.image : '');
       const optTexts = labels.map((label, idx) => {
@@ -65,12 +70,13 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       setExplanationText('');
       setSelectedMapel(defaultMapel);
       setSubTopikText('');
+      setKodeGuruText(defaultKodeGuru || 'GURU01');
       setImageString('');
       setImageUrlInput('');
       setOptionsText(['', '', '', '', '']);
       setCorrectIndex(0);
     }
-  }, [editingQuestion, isOpen, defaultMapel]);
+  }, [editingQuestion, isOpen, defaultMapel, defaultKodeGuru]);
 
   if (!isOpen) return null;
 
@@ -198,6 +204,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       image: imageString.trim() || undefined,
       mapel: selectedMapel,
       subTopik: subTopikText.trim() || undefined,
+      kodeGuru: kodeGuruText.trim().toUpperCase() || defaultKodeGuru || 'GURU01',
     });
   };
 
@@ -247,7 +254,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
 
         {activeTab === 'editor' ? (
           <div className="p-6 overflow-y-auto flex-1 space-y-5 custom-scrollbar">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block font-bold text-gray-800 mb-1.5 text-sm">
                   Mata Pelajaran <span className="text-red-500">*</span>
@@ -267,14 +274,28 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
 
               <div>
                 <label className="block font-bold text-gray-800 mb-1.5 text-sm flex items-center justify-between">
-                  <span>Sub Topik / Materi Ujian</span>
+                  <span>Kode Guru</span>
+                  <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-black">Penanda Unik</span>
+                </label>
+                <input
+                  type="text"
+                  value={kodeGuruText}
+                  onChange={(e) => setKodeGuruText(e.target.value.toUpperCase())}
+                  placeholder="Contoh: GURU01"
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-bold bg-white uppercase tracking-wider"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-800 mb-1.5 text-sm flex items-center justify-between">
+                  <span>Sub Topik / Materi</span>
                   <span className="text-xs font-normal text-gray-400">(Opsional)</span>
                 </label>
                 <input
                   type="text"
                   value={subTopikText}
                   onChange={(e) => setSubTopikText(e.target.value)}
-                  placeholder="Contoh: Perubahan Sosial, Globalisasi, dll."
+                  placeholder="Contoh: Perubahan Sosial"
                   className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-medium bg-white"
                 />
               </div>

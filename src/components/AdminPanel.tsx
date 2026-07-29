@@ -64,6 +64,10 @@ import {
   ChevronRight,
   CheckCircle2,
   Compass,
+  Youtube,
+  Video,
+  Play,
+  ExternalLink,
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -79,6 +83,22 @@ interface AdminPanelProps {
   showAlert: (msg: string) => void;
   showConfirm: (title: string, msg: string, onConfirm: () => void, isDanger?: boolean) => void;
 }
+
+/**
+ * Helper function to parse YouTube URLs (watch, shorts, embed, youtu.be) and convert to embed iframe URL
+ */
+const getYouTubeEmbedUrl = (url?: string): string | null => {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|shorts\/)([^#\&\?]*).*/;
+  const match = trimmed.match(regExp);
+  if (match && match[2] && match[2].length === 11) {
+    return `https://www.youtube.com/embed/${match[2]}`;
+  }
+  return null;
+};
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   config,
@@ -145,6 +165,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     'Kimia',
   ];
   const [mapelInput, setMapelInput] = useState<string>(config.mapel || 'Sosiologi');
+  const [kodeGuruInput, setKodeGuruInput] = useState<string>(config.kodeGuru || 'GURU01');
   const [mapelTitleInput, setMapelTitleInput] = useState<string>(
     config.mapelTitle || 'Assessment TKA SMA'
   );
@@ -154,6 +175,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [driveUploadUrlInput, setDriveUploadUrlInput] = useState<string>(
     config.driveUploadUrl || ''
   );
+  const [youtubeGuideUrlInput, setYoutubeGuideUrlInput] = useState<string>(
+    config.youtubeGuideUrl || ''
+  );
+  const [isEditingVideoUrl, setIsEditingVideoUrl] = useState<boolean>(false);
   const [mapelList, setMapelList] = useState<string[]>(
     config.mapelList && config.mapelList.length > 0 ? config.mapelList : defaultMapelList
   );
@@ -162,6 +187,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Question Selection & Batch State
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
   const [selectedBankMapel, setSelectedBankMapel] = useState<string>('ALL');
+  const [selectedBankKodeGuru, setSelectedBankKodeGuru] = useState<string>('ALL');
 
   // Excel Template Upload Modal State
   const [isUploadMapelModalOpen, setIsUploadMapelModalOpen] = useState(false);
@@ -183,6 +209,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newNis, setNewNis] = useState('');
   const [newNama, setNewNama] = useState('');
   const [newKelas, setNewKelas] = useState('');
+  const [newStudentKodeGuru, setNewStudentKodeGuru] = useState('');
+  const [studentKodeGuruFilter, setStudentKodeGuruFilter] = useState<string>('ALL');
+  const [rekapKodeGuruFilter, setRekapKodeGuruFilter] = useState<string>('ALL');
 
   // Student Results Selection State
   const [selectedResultIds, setSelectedResultIds] = useState<string[]>([]);
@@ -251,6 +280,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newNip, setNewNip] = useState('');
   const [newTeacherNama, setNewTeacherNama] = useState('');
   const [newTeacherMapel, setNewTeacherMapel] = useState('');
+  const [newTeacherKodeGuru, setNewTeacherKodeGuru] = useState('');
 
   // Kop Sekolah & Signature Modal State
   const [isKopModalOpen, setIsKopModalOpen] = useState(false);
@@ -464,10 +494,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       mapel: trimmedMapel,
       mapelTitle: finalTitle,
       subTitle: finalSubTitle,
+      kodeGuru: kodeGuruInput.trim().toUpperCase() || 'GURU01',
       driveUploadUrl: driveUploadUrlInput.trim(),
+      youtubeGuideUrl: youtubeGuideUrlInput.trim(),
       mapelList: updatedList,
     });
     showAlert(`Pengaturan Mata Pelajaran "${trimmedMapel}" berhasil disimpan!`);
+  };
+
+  const handleSaveYoutubeGuideUrl = () => {
+    const trimmed = youtubeGuideUrlInput.trim();
+    onSaveConfig({
+      ...config,
+      youtubeGuideUrl: trimmed,
+    });
+    setIsEditingVideoUrl(false);
+    if (trimmed) {
+      showAlert('Link Video Panduan Guru (YouTube) berhasil disimpan!');
+    } else {
+      showAlert('Link Video Panduan Guru berhasil dikosongkan.');
+    }
   };
 
   const handleAddCustomMapel = () => {
@@ -903,12 +949,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // --- STUDENT USER MANAGEMENT HANDLERS ---
   const handleDownloadStudentTemplate = () => {
     const ws_data = [
-      ['NIS', 'Nama', 'Kelas'],
-      ['1001', 'Ahmad Fauzi', 'XII IPS 1'],
-      ['1002', 'Siti Rahmawati', 'XII IPS 1'],
-      ['1003', 'Budi Santoso', 'XII IPS 2'],
-      ['1004', 'Dewi Anjani', 'XII IPS 2'],
-      ['1005', 'Rian Hidayat', 'XII IPS 3'],
+      ['NIS', 'Nama', 'Kelas', 'Kode_Guru'],
+      ['1001', 'Ahmad Fauzi', 'XII IPS 1', config.kodeGuru || 'GURU01'],
+      ['1002', 'Siti Rahmawati', 'XII IPS 1', config.kodeGuru || 'GURU01'],
+      ['1003', 'Budi Santoso', 'XII IPS 2', config.kodeGuru || 'GURU01'],
+      ['1004', 'Dewi Anjani', 'XII IPS 2', config.kodeGuru || 'GURU01'],
+      ['1005', 'Rian Hidayat', 'XII IPS 3', config.kodeGuru || 'GURU01'],
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     const wb = XLSX.utils.book_new();
@@ -935,6 +981,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       nis: newNis.trim(),
       nama: newNama.trim(),
       kelas: newKelas.trim() || 'XII IPS',
+      kodeGuru: newStudentKodeGuru.trim().toUpperCase() || config.kodeGuru || 'GURU01',
     };
 
     const updated = [...studentsList, newStudent];
@@ -943,6 +990,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewNis('');
     setNewNama('');
     setNewKelas('');
+    setNewStudentKodeGuru('');
     setIsAddStudentModalOpen(false);
     showAlert(`Siswa "${newStudent.nama}" berhasil ditambahkan!`);
   };
@@ -967,6 +1015,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           const nisVal = String(row['NIS'] || row['nis'] || row['No_Peserta'] || row['No. Peserta'] || '').trim();
           const namaVal = String(row['Nama'] || row['nama'] || row['Nama_Siswa'] || row['Nama Siswa'] || '').trim();
           const kelasVal = String(row['Kelas'] || row['kelas'] || row['Kelas_Siswa'] || 'XII IPS').trim();
+          const kodeGuruVal = String(row['Kode_Guru'] || row['Kode Guru'] || row['Kode'] || config.kodeGuru || 'GURU01').trim().toUpperCase();
 
           if (nisVal && namaVal) {
             // avoid duplicate NIS
@@ -980,6 +1029,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 nis: nisVal,
                 nama: namaVal,
                 kelas: kelasVal,
+                kodeGuru: kodeGuruVal,
               });
               countAdded++;
             }
@@ -1109,9 +1159,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // --- TEACHER USER MANAGEMENT HANDLERS ---
   const handleDownloadTeacherTemplate = () => {
     const ws_data = [
-      ['NIP', 'Nama', 'Mata_Pelajaran'],
-      ['198501152010011002', 'Drs. Aji Sosiologi, M.Pd', 'Sosiologi'],
-      ['198803202012022005', 'Siti Rahmawati, S.Pd', 'Sosiologi'],
+      ['NIP', 'Nama', 'Mata_Pelajaran', 'Kode_Guru'],
+      ['198501152010011002', 'Drs. Aji Sosiologi, M.Pd', 'Sosiologi', 'GURU01'],
+      ['198803202012022005', 'Siti Rahmawati, S.Pd', 'Sosiologi', 'GURU02'],
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     const wb = XLSX.utils.book_new();
@@ -1137,6 +1187,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       nip: newNip.trim(),
       nama: newTeacherNama.trim(),
       mapel: newTeacherMapel.trim() || 'Sosiologi',
+      kodeGuru: newTeacherKodeGuru.trim().toUpperCase() || 'GURU01',
     };
 
     const updated = [...teachersList, newTeacher];
@@ -1145,6 +1196,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setNewNip('');
     setNewTeacherNama('');
     setNewTeacherMapel('');
+    setNewTeacherKodeGuru('');
     setIsAddTeacherModalOpen(false);
     showAlert(`Guru "${newTeacher.nama}" berhasil ditambahkan!`);
   };
@@ -1169,6 +1221,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           const nipVal = String(row['NIP'] || row['nip'] || row['No_NIP'] || '').trim();
           const namaVal = String(row['Nama'] || row['nama'] || row['Nama_Guru'] || row['Nama Lengkap'] || '').trim();
           const mapelVal = String(row['Mata_Pelajaran'] || row['Mata Pelajaran'] || row['Mapel'] || 'Sosiologi').trim();
+          const kodeGuruVal = String(row['Kode_Guru'] || row['Kode Guru'] || row['Kode'] || 'GURU01').trim().toUpperCase();
 
           if (nipVal && namaVal) {
             const isDup =
@@ -1181,6 +1234,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 nip: nipVal,
                 nama: namaVal,
                 mapel: mapelVal,
+                kodeGuru: kodeGuruVal,
               });
               countAdded++;
             }
@@ -1219,6 +1273,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // --- FILTERS & STATS ---
+  const availableKodeGurus = Array.from(
+    new Set([
+      config.kodeGuru || 'GURU01',
+      ...config.questions.map((q) => q.kodeGuru).filter(Boolean),
+      ...teachersList.map((t) => t.kodeGuru).filter(Boolean),
+      ...studentsList.map((s) => s.kodeGuru).filter(Boolean),
+    ])
+  ) as string[];
+
   const filteredQuestions = config.questions.filter((q) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch =
@@ -1228,14 +1291,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       selectedBankMapel === 'ALL' ||
       !q.mapel ||
       q.mapel === selectedBankMapel;
-    return matchesSearch && matchesMapel;
+    const qKodeGuru = (q.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase();
+    const matchesKodeGuru =
+      selectedBankKodeGuru === 'ALL' ||
+      qKodeGuru === selectedBankKodeGuru.toUpperCase();
+
+    return matchesSearch && matchesMapel && matchesKodeGuru;
   });
 
-  const filteredStudentResults = studentResults.filter(
-    (r) =>
+  const filteredStudentResults = studentResults.filter((r) => {
+    const matchesSearch =
       r.studentInfo.name.toLowerCase().includes(rekapSearch.toLowerCase()) ||
-      r.studentInfo.noPeserta.toLowerCase().includes(rekapSearch.toLowerCase())
-  );
+      r.studentInfo.noPeserta.toLowerCase().includes(rekapSearch.toLowerCase());
+    const rKodeGuru = (r.studentInfo.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase();
+    const matchesKodeGuru =
+      rekapKodeGuruFilter === 'ALL' ||
+      rKodeGuru === rekapKodeGuruFilter.toUpperCase();
+
+    return matchesSearch && matchesKodeGuru;
+  });
 
   const filteredStudents = studentsList.filter((s) => {
     const matchesSearch =
@@ -1251,7 +1325,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       (studentStatusFilter === 'ACTIVE' && isStudentActive) ||
       (studentStatusFilter === 'INACTIVE' && !isStudentActive);
 
-    return matchesSearch && matchesClass && matchesStatus;
+    const sKodeGuru = (s.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase();
+    const matchesKodeGuru =
+      studentKodeGuruFilter === 'ALL' ||
+      sKodeGuru === studentKodeGuruFilter.toUpperCase();
+
+    return matchesSearch && matchesClass && matchesStatus && matchesKodeGuru;
   });
 
   const filteredTeachers = teachersList.filter(
@@ -1921,7 +2000,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </p>
 
                   {/* Operational Status Chips */}
-                  <div className="pt-2 grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  <div className="pt-2 grid grid-cols-2 sm:grid-cols-6 gap-2.5">
+                    <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Kode Guru</span>
+                      <span className="text-xs font-mono font-black text-amber-300 truncate block">{config.kodeGuru || 'GURU01'}</span>
+                    </div>
                     <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Mapel Aktif</span>
                       <span className="text-xs font-black text-sky-400 truncate block">{mapelInput || 'Sosiologi'}</span>
@@ -1940,12 +2023,188 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {sessionStatus}
                       </span>
                     </div>
-                    <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center col-span-2 sm:col-span-1">
+                    <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Token Ujian</span>
                       <span className="text-xs font-mono font-black text-amber-400 block">{currentToken}</span>
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* VIDEO TUTORIAL PANDUAN GURU (YOUTUBE) */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 bg-red-100 text-red-600 rounded-xl flex items-center justify-center shrink-0">
+                      <Youtube className="w-5 h-5 fill-current" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                        <span>Video Panduan & Tutorial Penggunaan CBT</span>
+                        {config.youtubeGuideUrl && (
+                          <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-black">
+                            Tersedia Video
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        Saksikan video penjelasan cara menggunakan Portal CBT GuruAI secara visual.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions for Admin and Teachers */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {adminRole === 'admin' && (
+                      <button
+                        onClick={() => setIsEditingVideoUrl(!isEditingVideoUrl)}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-xl transition-all border border-slate-300 flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-slate-600" />
+                        <span>{isEditingVideoUrl ? 'Tutup Pengaturan' : 'Atur Link Video (Admin)'}</span>
+                      </button>
+                    )}
+                    {config.youtubeGuideUrl && (
+                      <a
+                        href={config.youtubeGuideUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Buka di YouTube</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Form Input Khusus Admin */}
+                {(isEditingVideoUrl || (adminRole === 'admin' && !config.youtubeGuideUrl)) && (
+                  <div className="bg-slate-900 text-white rounded-xl p-4 space-y-3 border border-slate-800 shadow-inner">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-amber-400 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5" /> Form Input Link Video YouTube (Khusus Admin)
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Video ini akan dapat dilihat oleh seluruh User Guru
+                      </span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="url"
+                        value={youtubeGuideUrlInput}
+                        onChange={(e) => setYoutubeGuideUrlInput(e.target.value)}
+                        placeholder="Contoh: https://www.youtube.com/watch?v=... atau https://youtu.be/..."
+                        className="flex-1 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl px-3.5 py-2.5 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                      />
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={handleSaveYoutubeGuideUrl}
+                          className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Simpan Link</span>
+                        </button>
+                        {config.youtubeGuideUrl && (
+                          <button
+                            onClick={() => {
+                              setYoutubeGuideUrlInput('');
+                              onSaveConfig({ ...config, youtubeGuideUrl: '' });
+                              setIsEditingVideoUrl(false);
+                              showAlert('Link video berhasil dikosongkan.');
+                            }}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs px-3 py-2.5 rounded-xl border border-slate-700 transition-all cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Masukkan URL video YouTube (format <code className="text-amber-300 font-mono">watch?v=...</code>, <code className="text-amber-300 font-mono">youtu.be/...</code>, atau Shorts). Video akan otomatis terpasang dalam player di halaman Panduan ini.
+                    </p>
+                  </div>
+                )}
+
+                {/* Player Video Display Area */}
+                {(() => {
+                  const embedUrl = getYouTubeEmbedUrl(config.youtubeGuideUrl);
+                  if (embedUrl) {
+                    return (
+                      <div className="space-y-2">
+                        <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-md border border-slate-200 bg-slate-950">
+                          <iframe
+                            src={embedUrl}
+                            title="Video Panduan Guru CBT"
+                            className="absolute top-0 left-0 w-full h-full border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 px-1 pt-1">
+                          <span className="flex items-center gap-1 font-medium text-slate-600">
+                            <Video className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                            Putar video di atas untuk melihat demonstrasi langkah-langkah ujian.
+                          </span>
+                          {config.youtubeGuideUrl && (
+                            <a
+                              href={config.youtubeGuideUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-red-600 hover:text-red-700 font-bold flex items-center gap-1 hover:underline"
+                            >
+                              <span>Layar Penuh di YouTube</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  } else if (config.youtubeGuideUrl) {
+                    return (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 text-xs text-amber-900 font-semibold">
+                          <Youtube className="w-5 h-5 text-red-600 shrink-0" />
+                          <span>Link Video YouTube sudah disetel: <strong className="font-mono text-slate-700">{config.youtubeGuideUrl}</strong></span>
+                        </div>
+                        <a
+                          href={config.youtubeGuideUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 shrink-0"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Tonton Video Panduan</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    );
+                  } else if (!isEditingVideoUrl) {
+                    return (
+                      <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-6 text-center space-y-2">
+                        <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+                          <Youtube className="w-6 h-6 fill-current" />
+                        </div>
+                        <h4 className="font-bold text-slate-800 text-xs sm:text-sm">
+                          Video Panduan Belum Diunggah / Diatur
+                        </h4>
+                        <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                          Admin dapat memasukkan link video YouTube tutorial di sini agar seluruh Bapak/Ibu Guru dapat menyimak panduan penggunaan Portal CBT secara visual.
+                        </p>
+                        {adminRole === 'admin' && (
+                          <button
+                            onClick={() => setIsEditingVideoUrl(true)}
+                            className="mt-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Atur Link Video YouTube Sekarang</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Runtut 7 Langkah Persiapan Ujian */}
@@ -2273,6 +2532,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
 
                     <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center justify-between">
+                        <span>Kode Guru Pengampu (Penanda Multi-Guru)</span>
+                        <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-black">Wajib Unik</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={kodeGuruInput}
+                        onChange={(e) => setKodeGuruInput(e.target.value.toUpperCase())}
+                        placeholder="Contoh: GURU01 / SOS01 / MTH02"
+                        className="w-full bg-slate-50 border border-slate-300 text-amber-900 text-sm rounded-xl px-3.5 py-2.5 font-mono font-black focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Kode unik guru pengampu agar bank soal dan siswa tidak tertukar dengan guru lain.
+                      </p>
+                    </div>
+
+                    <div>
                       <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
                         Atau Ketik Nama Kustom Mata Pelajaran
                       </label>
@@ -2326,6 +2602,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       />
                       <p className="text-[11px] text-slate-500 mt-1">
                         Siswa akan melihat tombol &quot;Upload Hasil Jawaban (Google Drive)&quot; pada halaman akhir setelah ujian selesai untuk mengunggah file hasil (.cbt) mereka.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-red-700 font-extrabold">
+                          <Youtube className="w-4 h-4 text-red-600 fill-current" />
+                          Link Video YouTube (Panduan Guru)
+                        </span>
+                        <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-black">Khusus Admin</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={youtubeGuideUrlInput}
+                        onChange={(e) => setYoutubeGuideUrlInput(e.target.value)}
+                        placeholder="Contoh: https://www.youtube.com/watch?v=... atau https://youtu.be/..."
+                        className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl px-3.5 py-2.5 font-bold focus:ring-2 focus:ring-red-500 focus:outline-none"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Video tutorial ini dapat ditonton secara langsung oleh Bapak/Ibu Guru pada menu <strong>Panduan Guru</strong>.
                       </p>
                     </div>
 
@@ -2571,28 +2867,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-            {/* Filter & Selector Bar for Mata Pelajaran */}
-            <div className="bg-slate-100 p-3 rounded-xl border border-slate-200 mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <BookOpen className="w-4 h-4 text-sky-600 shrink-0" />
-                <span className="font-bold text-slate-700 whitespace-nowrap">Filter Mapel Bank Soal:</span>
-                <select
-                  value={selectedBankMapel}
-                  onChange={(e) => setSelectedBankMapel(e.target.value)}
-                  className="flex-1 sm:flex-none bg-white border border-slate-300 text-slate-800 font-bold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-sky-500 focus:outline-none cursor-pointer"
-                >
-                  <option value="ALL">Semua Mata Pelajaran ({config.questions.length} Total Soal)</option>
-                  {mapelList.map((m) => {
-                    const count = config.questions.filter(
-                      (q) => q.mapel === m || (!q.mapel && m === (config.mapel || 'Sosiologi'))
-                    ).length;
-                    return (
-                      <option key={m} value={m}>
-                        {m} ({count} Soal)
+            {/* Filter & Selector Bar for Mata Pelajaran & Kode Guru */}
+            <div className="bg-slate-100 p-3 rounded-xl border border-slate-200 mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-sky-600 shrink-0" />
+                  <span className="font-bold text-slate-700 whitespace-nowrap">Mapel:</span>
+                  <select
+                    value={selectedBankMapel}
+                    onChange={(e) => setSelectedBankMapel(e.target.value)}
+                    className="bg-white border border-slate-300 text-slate-800 font-bold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-sky-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL">Semua Mapel ({config.questions.length})</option>
+                    {mapelList.map((m) => {
+                      const count = config.questions.filter(
+                        (q) => q.mapel === m || (!q.mapel && m === (config.mapel || 'Sosiologi'))
+                      ).length;
+                      return (
+                        <option key={m} value={m}>
+                          {m} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="font-bold text-slate-700 whitespace-nowrap">Kode Guru:</span>
+                  <select
+                    value={selectedBankKodeGuru}
+                    onChange={(e) => setSelectedBankKodeGuru(e.target.value)}
+                    className="bg-white border border-amber-300 text-amber-900 font-mono font-bold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL">Semua Kode Guru</option>
+                    {availableKodeGurus.map((kg) => (
+                      <option key={kg} value={kg}>
+                        {kg}
                       </option>
-                    );
-                  })}
-                </select>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {selectedBankMapel !== 'ALL' && selectedBankMapel !== config.mapel && (
@@ -3065,6 +3380,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <option value="INACTIVE">🔴 Hanya Nonaktif</option>
                       </select>
                     </div>
+
+                    {/* Kode Guru Filter Dropdown */}
+                    <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-lg border border-amber-200 text-xs">
+                      <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="font-bold text-amber-900 text-[11px]">Kode Guru:</span>
+                      <select
+                        value={studentKodeGuruFilter}
+                        onChange={(e) => setStudentKodeGuruFilter(e.target.value)}
+                        className="font-mono font-bold text-amber-900 focus:outline-none bg-transparent cursor-pointer"
+                      >
+                        <option value="ALL">Semua Kode Guru</option>
+                        {availableKodeGurus.map((kg) => (
+                          <option key={kg} value={kg}>
+                            {kg}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   {/* Search Input */}
@@ -3143,6 +3476,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <th className="p-3">NIS / No. Peserta</th>
                         <th className="p-3">Nama Lengkap Siswa</th>
                         <th className="p-3">Kelas</th>
+                        <th className="p-3 text-center">Kode Guru</th>
                         <th className="p-3 text-center">Status Ujian</th>
                         {adminRole !== 'teacher' && <th className="p-3 text-center">Aksi</th>}
                       </tr>
@@ -3150,7 +3484,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <tbody className="divide-y divide-gray-100 text-xs">
                       {filteredStudents.length === 0 ? (
                         <tr>
-                          <td colSpan={adminRole !== 'teacher' ? 7 : 6} className="p-8 text-center text-gray-400 font-medium">
+                          <td colSpan={adminRole !== 'teacher' ? 8 : 7} className="p-8 text-center text-gray-400 font-medium">
                             Tidak ada data siswa yang cocok dengan filter.
                           </td>
                         </tr>
@@ -3180,6 +3514,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               <td className="p-3">
                                 <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold text-[11px] border border-indigo-100">
                                   {s.kelas}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="bg-amber-50 text-amber-800 font-mono px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">
+                                  {s.kodeGuru || config.kodeGuru || 'GURU01'}
                                 </span>
                               </td>
                               <td className="p-3 text-center">
@@ -3296,13 +3635,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         <th className="p-3">Username</th>
                         <th className="p-3">Nama Lengkap Guru</th>
                         <th className="p-3">Mata Pelajaran</th>
+                        <th className="p-3 text-center">Kode Guru</th>
                         {adminRole !== 'teacher' && <th className="p-3 text-center">Aksi</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-xs">
                       {filteredTeachers.length === 0 ? (
                         <tr>
-                          <td colSpan={adminRole !== 'teacher' ? 5 : 4} className="p-8 text-center text-gray-400 font-medium">
+                          <td colSpan={adminRole !== 'teacher' ? 6 : 5} className="p-8 text-center text-gray-400 font-medium">
                             Belum ada data guru terdaftar.
                           </td>
                         </tr>
@@ -3315,6 +3655,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <td className="p-3">
                               <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold text-[11px] border border-indigo-100">
                                 {t.mapel}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="bg-amber-50 text-amber-800 font-mono px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">
+                                {t.kodeGuru || 'GURU01'}
                               </span>
                             </td>
                             {adminRole !== 'teacher' && (
@@ -4104,8 +4449,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                {/* Kode Guru Filter Dropdown */}
+                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-amber-200 text-xs">
+                  <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="font-bold text-amber-900 text-[11px]">Kode Guru:</span>
+                  <select
+                    value={rekapKodeGuruFilter}
+                    onChange={(e) => setRekapKodeGuruFilter(e.target.value)}
+                    className="font-mono font-bold text-amber-900 focus:outline-none bg-transparent cursor-pointer"
+                  >
+                    <option value="ALL">Semua Kode Guru</option>
+                    {availableKodeGurus.map((kg) => (
+                      <option key={kg} value={kg}>
+                        {kg}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Search Bar */}
-                <div className="relative w-full sm:w-56">
+                <div className="relative w-full sm:w-48">
                   <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
                   <input
                     type="text"
@@ -4160,6 +4523,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </th>
                     <th className="p-3">No. Peserta</th>
                     <th className="p-3">Nama Siswa</th>
+                    <th className="p-3 text-center">Kode Guru</th>
                     <th className="p-3">Skor Nilai</th>
                     <th className="p-3">Benar / Salah</th>
                     <th className="p-3">Status</th>
@@ -4171,7 +4535,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <tbody className="divide-y divide-gray-100 text-xs">
                   {filteredStudentResults.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-8 text-center text-gray-400 font-medium">
+                      <td colSpan={10} className="p-8 text-center text-gray-400 font-medium">
                         Belum ada file jawaban siswa (.cbt) yang didekripsi. Klik button <b>Upload File .CBT Siswa</b> di atas untuk merekap jawaban.
                       </td>
                     </tr>
@@ -4195,6 +4559,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           </td>
                           <td className="p-3 font-mono font-bold text-gray-700">{r.studentInfo.noPeserta}</td>
                           <td className="p-3 font-bold text-gray-900">{r.studentInfo.name}</td>
+                          <td className="p-3 text-center">
+                            <span className="bg-amber-50 text-amber-800 font-mono px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">
+                              {r.studentInfo.kodeGuru || config.kodeGuru || 'GURU01'}
+                            </span>
+                          </td>
                           <td className="p-3">
                             <span
                               className={`font-black text-base ${
@@ -4710,6 +5079,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Kode Guru (Penanda Mapel / Guru)
+                </label>
+                <input
+                  type="text"
+                  value={newStudentKodeGuru}
+                  onChange={(e) => setNewStudentKodeGuru(e.target.value.toUpperCase())}
+                  placeholder={`Contoh: ${config.kodeGuru || 'GURU01'}`}
+                  className="w-full border-2 border-amber-200 bg-amber-50/50 rounded-xl p-2.5 focus:border-amber-500 focus:outline-none text-sm font-mono font-bold text-amber-900"
+                />
+              </div>
+
               <div className="pt-2 flex gap-3">
                 <button
                   type="button"
@@ -4785,6 +5167,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onChange={(e) => setNewTeacherMapel(e.target.value)}
                   placeholder="Contoh: Sosiologi"
                   className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  KODE GURU (KODE UNIK MAPEL)
+                </label>
+                <input
+                  type="text"
+                  value={newTeacherKodeGuru}
+                  onChange={(e) => setNewTeacherKodeGuru(e.target.value.toUpperCase())}
+                  placeholder="Contoh: GURU01 / SOS01"
+                  className="w-full border-2 border-amber-200 bg-amber-50/50 rounded-xl p-2.5 focus:border-amber-500 focus:outline-none text-sm font-mono font-bold text-amber-900"
                 />
               </div>
 
