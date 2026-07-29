@@ -625,6 +625,7 @@ export default function App() {
       {viewState === 'login' && (
         <LoginView
           config={config}
+          studentResults={studentResults}
           onSaveConfig={saveConfig}
           showAlert={showAlert}
           onStudentLoginSuccess={(info) => {
