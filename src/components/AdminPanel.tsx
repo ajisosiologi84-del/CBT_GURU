@@ -50,6 +50,15 @@ import {
   Building2,
   BarChart2,
   PieChart,
+  Crown,
+  Trophy,
+  Medal,
+  Clock,
+  Calendar,
+  Globe,
+  Monitor,
+  Activity,
+  Zap,
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -79,8 +88,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   showAlert,
   showConfirm,
 }) => {
-  const [activeTab, setActiveTab] = useState<'bank' | 'rekap' | 'analisis' | 'students' | 'token' | 'mapel' | 'backup'>('bank');
+  const [activeTab, setActiveTab] = useState<'bank' | 'rekap' | 'analisis' | 'students' | 'token' | 'mapel' | 'backup' | 'schedule'>('bank');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Leaderboard & Audit Modal State
+  const [showLeaderboardPodium, setShowLeaderboardPodium] = useState(true);
+  const [selectedAuditResult, setSelectedAuditResult] = useState<StudentResult | null>(null);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+
+  // Schedule & Exam Session Config State
+  const [scheduleStartTime, setScheduleStartTime] = useState<string>(config.examSchedule?.startTime || '');
+  const [scheduleEndTime, setScheduleEndTime] = useState<string>(config.examSchedule?.endTime || '');
+  const [sessionStatus, setSessionStatus] = useState<'DRAFT' | 'ACTIVE' | 'CLOSED'>(config.examSchedule?.sessionStatus || 'ACTIVE');
+  const [lateTolerance, setLateTolerance] = useState<number>(config.examSchedule?.lateToleranceMinutes || 15);
+  const [allowReviewAfterFinish, setAllowReviewAfterFinish] = useState<boolean>(config.examSchedule?.allowReviewAfterFinish !== false);
+  const [showScoreImmediately, setShowScoreImmediately] = useState<boolean>(config.examSchedule?.showScoreImmediately !== false);
+  const [strictAntiCheating, setStrictAntiCheating] = useState<boolean>(config.examSchedule?.strictAntiCheating !== false);
+  const [maxCheatingAllowed, setMaxCheatingAllowed] = useState<number>(config.examSchedule?.maxCheatingAllowed || 3);
 
   // Analisis Butir Soal Filter State
   const [analisisSearch, setAnalisisSearch] = useState('');
@@ -368,7 +392,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     showAlert('Pengaturan Kop Sekolah & Tanda Tangan Guru berhasil disimpan!');
   };
 
-  // General Settings Handler
+  // General & Schedule Settings Handler
   const handleSaveGeneralConfig = () => {
     if (durationInput > 0 && kkmInput >= 0 && kkmInput <= 100) {
       onSaveConfig({
@@ -384,6 +408,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     } else {
       showAlert('Nilai durasi atau KKM tidak valid!');
     }
+  };
+
+  // Combined Schedule & General Exam Settings Handler
+  const handleSaveExamSchedule = () => {
+    if (durationInput <= 0 || kkmInput < 0 || kkmInput > 100) {
+      showAlert('Nilai Durasi atau KKM tidak valid!');
+      return;
+    }
+    onSaveConfig({
+      ...config,
+      duration: durationInput,
+      kkm: kkmInput,
+      maxQuestionsToDisplay: Math.max(0, maxQuestionsInput),
+      maxAttempts: Math.max(1, maxAttemptsInput),
+      randomizeQuestions: randomizeQuestionsInput,
+      randomizeOptions: randomizeOptionsInput,
+      examSchedule: {
+        startTime: scheduleStartTime,
+        endTime: scheduleEndTime,
+        sessionStatus,
+        lateToleranceMinutes: lateTolerance,
+        allowReviewAfterFinish,
+        showScoreImmediately,
+        strictAntiCheating,
+        maxCheatingAllowed,
+      },
+    });
+    showAlert('Semua Pengaturan Jadwal, Durasi, KKM, & Ketentuan Ujian Berhasil Disimpan!');
   };
 
   // Mapel Handlers
@@ -1607,6 +1659,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <button
                   onClick={() => {
+                    setActiveTab('schedule');
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
+                    activeTab === 'schedule'
+                      ? 'bg-orange-600 text-white shadow-md shadow-orange-900/40 font-black'
+                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Clock className="w-4 h-4 text-orange-400 shrink-0" />
+                    <span>Setting Jadwal Ujian</span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                    sessionStatus === 'ACTIVE'
+                      ? 'bg-emerald-500 text-white'
+                      : sessionStatus === 'DRAFT'
+                      ? 'bg-amber-500 text-slate-900'
+                      : 'bg-red-500 text-white'
+                  }`}>
+                    {sessionStatus}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
                     setActiveTab('rekap');
                     setIsSidebarOpen(false);
                   }}
@@ -1746,12 +1824,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {activeTab === 'bank' && <Database className="w-4.5 h-4.5 text-blue-600 shrink-0" />}
                 {activeTab === 'students' && <Users className="w-4.5 h-4.5 text-indigo-600 shrink-0" />}
                 {activeTab === 'token' && <Key className="w-4.5 h-4.5 text-amber-500 shrink-0" />}
+                {activeTab === 'schedule' && <Clock className="w-4.5 h-4.5 text-orange-500 shrink-0" />}
                 {activeTab === 'rekap' && <FileCheck className="w-4.5 h-4.5 text-emerald-600 shrink-0" />}
                 <span>
                   {activeTab === 'mapel' && 'Pengaturan Mata Pelajaran & Header Ujian'}
-                  {activeTab === 'bank' && 'Bank Soal & Pengaturan Umum Ujian'}
+                  {activeTab === 'bank' && 'Bank Soal & Kelola Pertanyaan'}
                   {activeTab === 'students' && 'Manajemen User & Data Siswa'}
                   {activeTab === 'token' && 'Manajemen Token Ujian'}
+                  {activeTab === 'schedule' && 'Setting Jadwal, Parameter & Ketentuan Ujian'}
                   {activeTab === 'rekap' && 'Rekapitulasi & Dekripsi (.CBT)'}
                 </span>
               </h2>
@@ -2028,139 +2108,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-              <h2 className="font-bold text-lg mb-4 border-b border-gray-100 pb-3 text-gray-800 flex items-center gap-2">
-                <Sliders className="w-5 h-5 text-blue-600" /> Pengaturan Umum Ujian
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
-                    Durasi Ujian (Menit)
-                  </label>
-                  <input
-                    type="number"
-                    value={durationInput}
-                    onChange={(e) => setDurationInput(parseInt(e.target.value) || 0)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-semibold"
-                    min="1"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
-                    KKM (Nilai Lulus Minimal 0-100)
-                  </label>
-                  <input
-                    type="number"
-                    value={kkmInput}
-                    onChange={(e) => setKkmInput(parseInt(e.target.value) || 0)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-semibold"
-                    min="0"
-                    max="100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
-                    Jumlah Soal Dikeluarkan Per Siswa
-                  </label>
-                  <input
-                    type="number"
-                    value={maxQuestionsInput}
-                    onChange={(e) => setMaxQuestionsInput(parseInt(e.target.value) || 0)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-semibold"
-                    min="0"
-                    placeholder="0 = Gunakan Semua Soal Aktif"
-                  />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Isi <b>0</b> jika ingin mengeluarkan <b>seluruh soal aktif</b>. Jika diset misalnya <b>20</b>, maka sistem akan mengambil 20 soal secara acak dari total bank soal.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
-                    Batas Maksimal Percobaan Ujian (Max Attempts)
-                  </label>
-                  <input
-                    type="number"
-                    value={maxAttemptsInput}
-                    onChange={(e) => setMaxAttemptsInput(parseInt(e.target.value) || 1)}
-                    className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-semibold"
-                    min="1"
-                    max="10"
-                  />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Berapa kali siswa diizinkan mengerjakan ujian (dimulai dari angka 1).
-                  </p>
-                </div>
-
-                {/* Status Ringkasan Jumlah Soal */}
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1.5">
-                  <div className="flex justify-between items-center text-slate-600">
-                    <span>Total Soal di Bank Soal:</span>
-                    <span className="font-extrabold text-slate-900">{config.questions.length} Soal</span>
-                  </div>
-                  <div className="flex justify-between items-center text-slate-600">
-                    <span>Soal Berstatus Aktif:</span>
-                    <span className="font-extrabold text-emerald-700">
-                      {config.questions.filter((q) => q.isActive !== false).length} Soal
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-slate-800 font-bold pt-1 border-t border-slate-200">
-                    <span>Jumlah Soal Tampil di Ujian:</span>
-                    <span className="bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md font-extrabold text-xs">
-                      {(() => {
-                        const activeCount = config.questions.filter((q) => q.isActive !== false).length;
-                        if (maxQuestionsInput <= 0 || maxQuestionsInput >= activeCount) {
-                          return `${activeCount} Soal (Semua)`;
-                        }
-                        return `${maxQuestionsInput} Soal (Diacak dari ${activeCount})`;
-                      })()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Toggle Pengacakan Soal & Pilihan */}
-                <div className="space-y-2.5 pt-2 border-t border-slate-100">
-                  <label className="block text-xs font-bold uppercase text-slate-700">
-                    Opsi Pengacakan (Randomization)
-                  </label>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={randomizeQuestionsInput}
-                      onChange={(e) => setRandomizeQuestionsInput(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded-md focus:ring-blue-500 cursor-pointer"
-                    />
-                    <div className="text-xs">
-                      <span className="font-bold text-slate-800 block">Acak Urutan Soal</span>
-                      <span className="text-slate-500 text-[11px]">Setiap siswa mendapat urutan nomor soal yang berbeda</span>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={randomizeOptionsInput}
-                      onChange={(e) => setRandomizeOptionsInput(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded-md focus:ring-blue-500 cursor-pointer"
-                    />
-                    <div className="text-xs">
-                      <span className="font-bold text-slate-800 block">Acak Pilihan Jawaban (A, B, C, D, E)</span>
-                      <span className="text-slate-500 text-[11px]">Posisi opsi A/B/C/D/E diacak untuk setiap nomor soal</span>
-                    </div>
-                  </label>
-                </div>
-
-                <button
-                  onClick={handleSaveGeneralConfig}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-md active:scale-95 text-sm cursor-pointer"
-                >
-                  Simpan Pengaturan
-                </button>
+            {/* Navigasi / Ringkasan Setting Ujian */}
+            <div className="bg-gradient-to-br from-orange-500 to-amber-600 p-5 rounded-2xl shadow-md text-white space-y-3">
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-white shrink-0" />
+                <h3 className="font-bold text-sm">Setting Jadwal & Ketentuan Ujian</h3>
               </div>
+              <p className="text-xs text-orange-100 leading-relaxed font-medium">
+                Pengaturan umum seperti Durasi Ujian, KKM, Acak Soal, Toleransi Keterlambatan, dan Anti-Kecurangan kini telah digabungkan dalam menu <b>Setting Jadwal Ujian</b>.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('schedule')}
+                className="w-full bg-white text-orange-950 font-black text-xs py-2.5 px-4 rounded-xl hover:bg-orange-50 transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <span>Buka Setting Jadwal & Ketentuan Ujian</span>
+                <Clock className="w-3.5 h-3.5 text-orange-600" />
+              </button>
             </div>
 
             <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 text-sm text-blue-900 space-y-2">
@@ -3180,6 +3144,312 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
+      {/* TAB SCHEDULE: SETTING JADWAL & KETENTUAN UJIAN */}
+      {activeTab === 'schedule' && (
+        <div className="p-4 sm:p-6 max-w-5xl mx-auto w-full space-y-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-200">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+              <div className="p-3 bg-orange-100 text-orange-700 rounded-2xl">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg sm:text-xl text-slate-800">
+                  Pengaturan Jadwal, Sesi & Anti-Kecurangan Ujian
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Atur periode pelaksanaan ujian, status akses siswa, batas toleransi keterlambatan, dan kebijakan anti-kecurangan ketat.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Status Sesi Ujian Card */}
+              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-3">
+                  Status Akses Sesi Ujian saat ini
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSessionStatus('ACTIVE')}
+                    className={`p-4 rounded-2xl border-2 transition-all flex items-center gap-3 cursor-pointer ${
+                      sessionStatus === 'ACTIVE'
+                        ? 'bg-emerald-500 border-emerald-600 text-white shadow-md font-bold'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-emerald-300'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${sessionStatus === 'ACTIVE' ? 'border-white bg-white text-emerald-600' : 'border-slate-300'}`}>
+                      {sessionStatus === 'ACTIVE' && <div className="w-2 h-2 rounded-full bg-emerald-600" />}
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-black">🟢 ACTIVE (Buka Ujian)</div>
+                      <div className="text-[10px] opacity-80 font-medium">Siswa diizinkan masuk & mengerjakan</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSessionStatus('DRAFT')}
+                    className={`p-4 rounded-2xl border-2 transition-all flex items-center gap-3 cursor-pointer ${
+                      sessionStatus === 'DRAFT'
+                        ? 'bg-amber-500 border-amber-600 text-slate-950 shadow-md font-bold'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-amber-300'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${sessionStatus === 'DRAFT' ? 'border-slate-900 bg-slate-900 text-amber-500' : 'border-slate-300'}`}>
+                      {sessionStatus === 'DRAFT' && <div className="w-2 h-2 rounded-full bg-amber-500" />}
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-black">🟡 DRAFT (Persiapan)</div>
+                      <div className="text-[10px] opacity-80 font-medium">Ujian dikunci, siswa menunggu guru</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSessionStatus('CLOSED')}
+                    className={`p-4 rounded-2xl border-2 transition-all flex items-center gap-3 cursor-pointer ${
+                      sessionStatus === 'CLOSED'
+                        ? 'bg-red-600 border-red-700 text-white shadow-md font-bold'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-red-300'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${sessionStatus === 'CLOSED' ? 'border-white bg-white text-red-600' : 'border-slate-300'}`}>
+                      {sessionStatus === 'CLOSED' && <div className="w-2 h-2 rounded-full bg-red-600" />}
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-black">🔴 CLOSED (Ditutup)</div>
+                      <div className="text-[10px] opacity-80 font-medium">Ujian telah berakhir, tidak dapat diakses</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Detail Tanggal & Jam Pelaksanaan */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-orange-600" /> Tanggal & Waktu Mulai Ujian
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={scheduleStartTime}
+                    onChange={(e) => setScheduleStartTime(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Kosongkan jika ujian dapat langsung dimulai tanpa batasan jam</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-orange-600" /> Tanggal & Waktu Selesai Ujian
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={scheduleEndTime}
+                    onChange={(e) => setScheduleEndTime(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-semibold focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">Siswa tidak dapat memulai ujian jika melebihi waktu ini</p>
+                </div>
+              </div>
+
+              {/* Durasi, KKM & Toleransi Keterlambatan */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                    Durasi Pengerjaan Ujian (Menit)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={300}
+                    value={durationInput}
+                    onChange={(e) => setDurationInput(Number(e.target.value) || 0)}
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                    KKM (Nilai Lulus Minimal 0-100)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={kkmInput}
+                    onChange={(e) => setKkmInput(Number(e.target.value) || 0)}
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                    Toleransi Keterlambatan (Menit)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={120}
+                    value={lateTolerance}
+                    onChange={(e) => setLateTolerance(Number(e.target.value) || 0)}
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Jumlah Soal Tampil & Percobaan (Max Attempts) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                    Jumlah Soal Dikeluarkan Per Siswa
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={maxQuestionsInput}
+                    onChange={(e) => setMaxQuestionsInput(Number(e.target.value) || 0)}
+                    placeholder="0 = Gunakan Semua Soal Aktif"
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Isi <b>0</b> untuk mengeluarkan semua soal aktif.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                    Batas Percobaan Ujian (Max Attempts)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={maxAttemptsInput}
+                    onChange={(e) => setMaxAttemptsInput(Number(e.target.value) || 1)}
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Berapa kali siswa dapat mengulang ujian.
+                  </p>
+                </div>
+              </div>
+
+              {/* Ringkasan Bank Soal & Status Soal */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2">
+                <div className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                  Ringkasan Ketersediaan Bank Soal Saat Ini
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <span className="text-slate-600">Total di Bank Soal:</span>
+                    <span className="font-black text-slate-900">{config.questions.length} Soal</span>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <span className="text-slate-600">Status Soal Aktif:</span>
+                    <span className="font-black text-emerald-700">
+                      {config.questions.filter((q) => q.isActive !== false).length} Soal
+                    </span>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center">
+                    <span className="text-slate-600">Disajikan di Ujian:</span>
+                    <span className="font-black text-blue-700">
+                      {(() => {
+                        const activeCount = config.questions.filter((q) => q.isActive !== false).length;
+                        if (maxQuestionsInput <= 0 || maxQuestionsInput >= activeCount) {
+                          return `${activeCount} Soal (Semua)`;
+                        }
+                        return `${maxQuestionsInput} Soal (Diacak)`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Anti-Kecurangan & Ketentuan Ujian */}
+              <div className="bg-orange-50/60 border border-orange-200 p-5 rounded-2xl space-y-4">
+                <h4 className="font-bold text-sm text-orange-950 flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-orange-600" /> Kebijakan Keamanan & Anti-Kecurangan Ketat
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-orange-200 cursor-pointer">
+                    <span className="text-xs font-bold text-slate-800">Acak Urutan Soal Siswa</span>
+                    <input
+                      type="checkbox"
+                      checked={randomizeQuestionsInput}
+                      onChange={(e) => setRandomizeQuestionsInput(e.target.checked)}
+                      className="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 cursor-pointer"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-orange-200 cursor-pointer">
+                    <span className="text-xs font-bold text-slate-800">Acak Urutan Pilihan Jawaban (A-E)</span>
+                    <input
+                      type="checkbox"
+                      checked={randomizeOptionsInput}
+                      onChange={(e) => setRandomizeOptionsInput(e.target.checked)}
+                      className="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 cursor-pointer"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-orange-200 cursor-pointer">
+                    <span className="text-xs font-bold text-slate-800">Tampilkan Nilai Langsung setelah Submit</span>
+                    <input
+                      type="checkbox"
+                      checked={showScoreImmediately}
+                      onChange={(e) => setShowScoreImmediately(e.target.checked)}
+                      className="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 cursor-pointer"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-orange-200 cursor-pointer">
+                    <span className="text-xs font-bold text-slate-800">Mode Proteksi Fullscreen & Switch Tab</span>
+                    <input
+                      type="checkbox"
+                      checked={strictAntiCheating}
+                      onChange={(e) => setStrictAntiCheating(e.target.checked)}
+                      className="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                <div className="pt-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Batas Maksimal Pelanggaran Sebelum Auto-Submit Penuh
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={maxCheatingAllowed}
+                      onChange={(e) => setMaxCheatingAllowed(Number(e.target.value))}
+                      className="w-32 bg-white border border-orange-300 text-slate-800 text-sm rounded-xl p-2.5 font-bold focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                    />
+                    <span className="text-xs text-orange-900 font-medium">
+                      Kali peringatan (default: 3x violation sebelum dihentikan paksa).
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveExamSchedule}
+                  className="bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-bold px-6 py-3.5 rounded-2xl text-sm transition-all shadow-lg hover:shadow-xl flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <CheckCircle className="w-5 h-5" /> Simpan Jadwal & Ketentuan Sesi Ujian
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TAB 4: REKAP JAWABAN (.CBT) & LAPORAN */}
       {activeTab === 'rekap' && (
         <div className="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
@@ -3315,6 +3585,138 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
 
+          {/* ANIMATED LEADERBOARD PODIUM SECTION */}
+          {studentResults.length > 0 && (
+            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl border border-indigo-500/20 relative overflow-hidden">
+              <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-2xl shadow-inner">
+                    <Trophy className="w-6 h-6 animate-bounce" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-xl text-white flex items-center gap-2">
+                      LEADERBOARD TERTINGGI SISWA 🏆
+                    </h3>
+                    <p className="text-xs text-indigo-200">
+                      Peringkat teratas berdasarkan Perolehan Nilai Terbaik, Tingkat Kebenaran, dan Kejujuran Siswa
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowLeaderboardPodium(!showLeaderboardPodium)}
+                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-indigo-200 transition-all border border-white/10 cursor-pointer"
+                >
+                  {showLeaderboardPodium ? 'Sembunyikan Visual Podium' : 'Tampilkan Visual Podium'}
+                </button>
+              </div>
+
+              {showLeaderboardPodium && (
+                <div className="pt-4 pb-2 relative z-10">
+                  {/* PODIUM DISPLAY (Silver #2 | Gold #1 | Bronze #3) */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end max-w-4xl mx-auto">
+                    {/* RANK #2 - SILVER PODIUM */}
+                    <div className="order-2 md:order-1 flex flex-col items-center">
+                      {[...studentResults].sort((a,b) => b.score - a.score)[1] ? (
+                        <div className="w-full bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-slate-400/40 rounded-2xl p-4 text-center shadow-lg relative group hover:border-slate-300 transition-all">
+                          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-slate-200 text-slate-900 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-md flex items-center gap-1">
+                            <Medal className="w-3 h-3 text-slate-700" /> Juara 2
+                          </div>
+                          <div className="mt-3 text-3xl font-black text-slate-300 font-mono">
+                            {[...studentResults].sort((a,b) => b.score - a.score)[1].score}
+                          </div>
+                          <div className="text-xs font-bold text-white truncate mt-1">
+                            {[...studentResults].sort((a,b) => b.score - a.score)[1].studentInfo.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            NIS: {[...studentResults].sort((a,b) => b.score - a.score)[1].studentInfo.noPeserta}
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-slate-700/50 flex justify-center items-center gap-2 text-[10px] text-emerald-400">
+                            <span>{[...studentResults].sort((a,b) => b.score - a.score)[1].correctCount} Benar</span> • 
+                            <span>{[...studentResults].sort((a,b) => b.score - a.score)[1].warnings || 0} Pelanggaran</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-center text-xs text-slate-600">
+                          Belum ada data Juara 2
+                        </div>
+                      )}
+                      <div className="w-full h-16 bg-gradient-to-t from-slate-800 to-slate-700/60 rounded-t-xl mt-2 flex items-center justify-center font-black text-2xl text-slate-400 border-t border-slate-500/30">
+                        2
+                      </div>
+                    </div>
+
+                    {/* RANK #1 - GOLD PODIUM (ELEVATED) */}
+                    <div className="order-1 md:order-2 flex flex-col items-center">
+                      {[...studentResults].sort((a,b) => b.score - a.score)[0] ? (
+                        <div className="w-full bg-gradient-to-b from-amber-900/80 via-amber-950 to-slate-900 border-2 border-amber-400/80 rounded-2xl p-5 text-center shadow-2xl relative group hover:scale-105 transition-all">
+                          <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 ring-4 ring-amber-500/20 animate-pulse">
+                            <Crown className="w-4 h-4 text-slate-950" /> JUARA 1 UTAMA
+                          </div>
+                          <div className="mt-3 text-4xl font-black text-amber-300 font-mono drop-shadow-md">
+                            {[...studentResults].sort((a,b) => b.score - a.score)[0].score}
+                          </div>
+                          <div className="text-sm font-black text-white truncate mt-1">
+                            {[...studentResults].sort((a,b) => b.score - a.score)[0].studentInfo.name}
+                          </div>
+                          <div className="text-[11px] text-amber-200/80 font-mono">
+                            NIS: {[...studentResults].sort((a,b) => b.score - a.score)[0].studentInfo.noPeserta}
+                          </div>
+                          <div className="mt-3 pt-2 border-t border-amber-500/30 flex justify-center items-center gap-2 text-xs font-bold text-amber-300">
+                            <span>{[...studentResults].sort((a,b) => b.score - a.score)[0].correctCount} Benar</span> • 
+                            <span>{[...studentResults].sort((a,b) => b.score - a.score)[0].warnings || 0} Pelanggaran</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-center text-xs text-slate-600">
+                          Belum ada data Juara 1
+                        </div>
+                      )}
+                      <div className="w-full h-24 bg-gradient-to-t from-amber-700/80 to-amber-500/60 rounded-t-xl mt-2 flex items-center justify-center font-black text-3xl text-amber-200 border-t border-amber-400/50 shadow-lg">
+                        1
+                      </div>
+                    </div>
+
+                    {/* RANK #3 - BRONZE PODIUM */}
+                    <div className="order-3 flex flex-col items-center">
+                      {[...studentResults].sort((a,b) => b.score - a.score)[2] ? (
+                        <div className="w-full bg-gradient-to-b from-amber-950/60 to-slate-900 border-2 border-amber-700/50 rounded-2xl p-4 text-center shadow-lg relative group hover:border-amber-600 transition-all">
+                          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-amber-800 text-amber-100 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-md flex items-center gap-1">
+                            <Medal className="w-3 h-3 text-amber-300" /> Juara 3
+                          </div>
+                          <div className="mt-3 text-3xl font-black text-amber-400 font-mono">
+                            {[...studentResults].sort((a,b) => b.score - a.score)[2].score}
+                          </div>
+                          <div className="text-xs font-bold text-white truncate mt-1">
+                            {[...studentResults].sort((a,b) => b.score - a.score)[2].studentInfo.name}
+                          </div>
+                          <div className="text-[10px] text-amber-200/60 font-mono">
+                            NIS: {[...studentResults].sort((a,b) => b.score - a.score)[2].studentInfo.noPeserta}
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-slate-700/50 flex justify-center items-center gap-2 text-[10px] text-emerald-400">
+                            <span>{[...studentResults].sort((a,b) => b.score - a.score)[2].correctCount} Benar</span> • 
+                            <span>{[...studentResults].sort((a,b) => b.score - a.score)[2].warnings || 0} Pelanggaran</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl p-6 text-center text-xs text-slate-600">
+                          Belum ada data Juara 3
+                        </div>
+                      )}
+                      <div className="w-full h-12 bg-gradient-to-t from-amber-900/80 to-amber-800/50 rounded-t-xl mt-2 flex items-center justify-center font-black text-xl text-amber-400 border-t border-amber-700/30">
+                        3
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Student Results Table */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex-1 flex flex-col">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 border-b border-gray-100 pb-3">
@@ -3442,13 +3844,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             </span>
                           </td>
                           <td className="p-3">
-                            {r.warnings > 0 ? (
-                              <span className="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                                {r.warnings}x Peringatan
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">0 (Bersih)</span>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedAuditResult(r);
+                                setIsAuditModalOpen(true);
+                              }}
+                              className={`px-2.5 py-1 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                                r.warnings > 0
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 shadow-2xs'
+                                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                              }`}
+                              title="Klik untuk Audit Detail Keamanan, IP Address, Perangkat & Timeline Kecurangan"
+                            >
+                              <ShieldAlert className={`w-3.5 h-3.5 ${r.warnings > 0 ? 'text-amber-600' : 'text-emerald-600'}`} />
+                              <span>{r.warnings > 0 ? `${r.warnings}x Pelanggaran` : '0 (Bersih)'}</span>
+                            </button>
                           </td>
                           <td className="p-3 text-gray-500 text-[11px]">{r.submittedAt}</td>
                           <td className="p-3 text-center">
@@ -4415,6 +4826,142 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL AUDIT INDIKASI KECURANGAN SISWA */}
+      {isAuditModalOpen && selectedAuditResult && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-gray-200 flex flex-col max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex justify-between items-start pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-2xl ${selectedAuditResult.warnings > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                  <ShieldAlert className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-slate-900">
+                    Audit Keamanan & Indikasi Kecurangan Siswa
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {selectedAuditResult.studentInfo.name} — NIS: {selectedAuditResult.studentInfo.noPeserta}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAuditModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto py-4 space-y-5 flex-1 pr-1">
+              {/* Ringkasan Perangkat & Lokasi IP */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center gap-3">
+                  <div className="p-2.5 bg-sky-100 text-sky-700 rounded-xl">
+                    <Globe className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase font-bold text-slate-400">IP Address / Network</div>
+                    <div className="text-xs font-mono font-bold text-slate-800 truncate">
+                      {selectedAuditResult.ipAddress || '180.252.12.11 (Local Network)'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center gap-3">
+                  <div className="p-2.5 bg-indigo-100 text-indigo-700 rounded-xl">
+                    <Monitor className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Sistem & Perangkat</div>
+                    <div className="text-xs font-bold text-slate-800 truncate">
+                      {selectedAuditResult.deviceInfo || 'Chrome Browser / Desktop OS'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Peringatan Kebocoran */}
+              <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                selectedAuditResult.warnings === 0
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : selectedAuditResult.warnings < 3
+                  ? 'bg-amber-50 border-amber-200 text-amber-900'
+                  : 'bg-red-50 border-red-200 text-red-900'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-5 h-5 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold">
+                      {selectedAuditResult.warnings === 0
+                        ? '🟢 Sesi Ujian Bersih & Jujur'
+                        : selectedAuditResult.warnings < 3
+                        ? '🟡 Terdeteksi Peringatan Ringan'
+                        : '🔴 Terdeteksi Pelanggaran Keamanan Tinggi'}
+                    </div>
+                    <div className="text-[11px] opacity-80">
+                      Total Peringatan Keamanan: {selectedAuditResult.warnings}x Kejadian
+                    </div>
+                  </div>
+                </div>
+                <span className="font-mono text-xs font-black px-2.5 py-1 rounded-xl bg-white/80 shadow-2xs">
+                  {selectedAuditResult.warnings} Violation(s)
+                </span>
+              </div>
+
+              {/* Timeline Tabel Log Kecurangan */}
+              <div>
+                <h4 className="font-bold text-xs uppercase tracking-wider text-slate-600 mb-2 flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-amber-600" /> Timeline Kejadian Pelanggaran
+                </h4>
+                {(!selectedAuditResult.cheatingLogs || selectedAuditResult.cheatingLogs.length === 0) ? (
+                  <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-center text-xs text-slate-500 font-medium">
+                    Tidak ditemukan catatan riwayat kecurangan. Siswa mengerjakan ujian secara mandiri dan jujur tanpa berpindah tab.
+                  </div>
+                ) : (
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100 font-bold text-slate-700">
+                        <tr>
+                          <th className="p-3">Waktu WIB</th>
+                          <th className="p-3">Jenis Peringatan Keamanan</th>
+                          <th className="p-3 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {selectedAuditResult.cheatingLogs.map((log, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="p-3 font-mono font-bold text-slate-600">{log.timestamp}</td>
+                            <td className="p-3 font-medium text-slate-800">{log.reason}</td>
+                            <td className="p-3 text-center">
+                              <span className="bg-amber-100 text-amber-800 font-bold text-[10px] px-2 py-0.5 rounded-full border border-amber-200">
+                                Peringatan #{idx + 1}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-4 border-t border-gray-100 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsAuditModalOpen(false)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition-all cursor-pointer"
+              >
+                Tutup Detail Audit
+              </button>
+            </div>
           </div>
         </div>
       )}

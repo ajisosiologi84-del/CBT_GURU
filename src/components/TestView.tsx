@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Question } from '../types';
 import { formatQuestionText } from '../utils/questionFormatter';
-import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X } from 'lucide-react';
+import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 interface TestViewProps {
   questions: Question[];
@@ -37,6 +37,8 @@ export const TestView: React.FC<TestViewProps> = ({
   onFinish,
 }) => {
   const [showMobileNav, setShowMobileNav] = useState(false);
+  const [showFinishModal, setShowFinishModal] = useState(false);
+  const [isConfirmedChecked, setIsConfirmedChecked] = useState(false);
 
   const currentQuestion = questions[currentIndex];
   const currentAnswer = answers[currentIndex];
@@ -50,6 +52,14 @@ export const TestView: React.FC<TestViewProps> = ({
 
   const isTimeCritical = timeRemaining < 300; // less than 5 minutes
   const answeredCount = answers.filter((a) => a !== null).length;
+  const unansweredCount = questions.length - answeredCount;
+  const raguCount = raguList.filter(Boolean).length;
+
+  const handleConfirmFinish = () => {
+    setShowFinishModal(false);
+    setIsConfirmedChecked(false);
+    onFinish();
+  };
 
   const renderNavGrid = () => (
     <div className="grid grid-cols-5 sm:grid-cols-5 gap-2.5">
@@ -126,8 +136,8 @@ export const TestView: React.FC<TestViewProps> = ({
           </div>
 
           <button
-            onClick={onFinish}
-            className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold text-xs transition-all shadow-md flex items-center gap-1.5 active:scale-95 shrink-0"
+            onClick={() => setShowFinishModal(true)}
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold text-xs transition-all shadow-md flex items-center gap-1.5 active:scale-95 shrink-0 cursor-pointer"
           >
             <Flag className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Selesaikan Ujian</span><span className="sm:hidden">Selesai</span>
           </button>
@@ -224,20 +234,22 @@ export const TestView: React.FC<TestViewProps> = ({
               </label>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={onNext}
-                  disabled={currentIndex === questions.length - 1}
-                  className="px-3.5 sm:px-5 py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 active:scale-95 cursor-pointer"
-                >
-                  <span className="hidden xs:inline">Selanjutnya</span> <ChevronRight className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={onFinish}
-                  className="px-4 py-2 sm:py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center gap-1 active:scale-95 cursor-pointer"
-                  title="Selesaikan Ujian"
-                >
-                  <Flag className="w-4 h-4" /> Selesai
-                </button>
+                {currentIndex < questions.length - 1 ? (
+                  <button
+                    onClick={onNext}
+                    className="px-4 sm:px-6 py-2 sm:py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                  >
+                    <span>Selanjutnya</span> <ChevronRight className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowFinishModal(true)}
+                    className="px-5 sm:px-6 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm transition-all shadow-lg shadow-emerald-900/20 flex items-center gap-2 active:scale-95 cursor-pointer"
+                    title="Selesaikan Ujian"
+                  >
+                    <Flag className="w-4 h-4" /> <span>Selesai Ujian</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -302,6 +314,123 @@ export const TestView: React.FC<TestViewProps> = ({
           </div>
         )}
       </main>
+
+      {/* MODAL KONFIRMASI SELESAI UJIAN */}
+      {showFinishModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-gray-200 relative overflow-hidden flex flex-col">
+            <div className="flex justify-between items-start mb-4 pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-red-100 text-red-700 rounded-2xl">
+                  <Flag className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg sm:text-xl text-slate-900 leading-tight">
+                    Konfirmasi Selesaikan Ujian
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Cek kembali rangkuman pengerjaan Anda
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowFinishModal(false);
+                  setIsConfirmedChecked(false);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Rangkuman Jawaban Cards */}
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-center">
+                <div className="text-[10px] uppercase font-bold text-emerald-700">Dijawab</div>
+                <div className="text-2xl font-black text-emerald-900 font-mono mt-0.5">{answeredCount}</div>
+                <div className="text-[10px] text-emerald-600 font-semibold">dari {questions.length} soal</div>
+              </div>
+
+              <div className={`p-3 rounded-2xl text-center border ${unansweredCount > 0 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
+                <div className={`text-[10px] uppercase font-bold ${unansweredCount > 0 ? 'text-red-700' : 'text-slate-500'}`}>Belum Dijawab</div>
+                <div className={`text-2xl font-black font-mono mt-0.5 ${unansweredCount > 0 ? 'text-red-900' : 'text-slate-700'}`}>{unansweredCount}</div>
+                <div className="text-[10px] text-slate-500 font-semibold">soal kosong</div>
+              </div>
+
+              <div className={`p-3 rounded-2xl text-center border ${raguCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                <div className={`text-[10px] uppercase font-bold ${raguCount > 0 ? 'text-amber-800' : 'text-slate-500'}`}>Ragu-Ragu</div>
+                <div className={`text-2xl font-black font-mono mt-0.5 ${raguCount > 0 ? 'text-amber-950' : 'text-slate-700'}`}>{raguCount}</div>
+                <div className="text-[10px] text-slate-500 font-semibold">soal ragu</div>
+              </div>
+            </div>
+
+            {/* Warning Alert if incomplete */}
+            {(unansweredCount > 0 || raguCount > 0) && (
+              <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl mb-5 flex items-start gap-3 text-amber-950">
+                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs leading-relaxed font-semibold">
+                  {unansweredCount > 0 && raguCount > 0 ? (
+                    <span>
+                      <b>Perhatian!</b> Masih terdapat <b>{unansweredCount} soal belum dijawab</b> dan <b>{raguCount} soal bertanda ragu-ragu</b>.
+                    </span>
+                  ) : unansweredCount > 0 ? (
+                    <span>
+                      <b>Perhatian!</b> Masih terdapat <b>{unansweredCount} soal belum dijawab</b>. Soal yang kosong bernilai 0.
+                    </span>
+                  ) : (
+                    <span>
+                      <b>Perhatian!</b> Terdapat <b>{raguCount} soal</b> yang masih bertanda ragu-ragu.
+                    </span>
+                  )}
+                  <p className="text-[11px] text-amber-800 font-normal mt-0.5">
+                    Sebaiknya periksa kembali navigasi soal sebelum mengirimkan jawaban akhir.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Checkbox Confirmation */}
+            <label className="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer mb-6">
+              <input
+                type="checkbox"
+                checked={isConfirmedChecked}
+                onChange={(e) => setIsConfirmedChecked(e.target.checked)}
+                className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer mt-0.5 shrink-0"
+              />
+              <div className="text-xs text-slate-800 font-medium leading-snug">
+                Saya telah memeriksa seluruh jawaban dan <b>yakin ingin menyelesaikan</b> ujian ini sekarang.
+              </div>
+            </label>
+
+            {/* Footer Buttons */}
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFinishModal(false);
+                  setIsConfirmedChecked(false);
+                }}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
+              >
+                Batal & Periksa
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmFinish}
+                disabled={!isConfirmedChecked}
+                className={`px-5 py-2.5 text-white font-extrabold rounded-xl text-xs transition-all flex items-center gap-2 shadow-md ${
+                  isConfirmedChecked
+                    ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 cursor-pointer active:scale-95'
+                    : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-70'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4" /> Ya, Selesaikan Ujian
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

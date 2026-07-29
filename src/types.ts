@@ -42,6 +42,23 @@ export interface KopSekolahConfig {
   nipKepalaSekolah?: string; // e.g. "197203101998021001"
 }
 
+export interface CheatingLog {
+  timestamp: string; // e.g. "10:15:22"
+  type: string; // e.g. "Pindah Tab / Keluar Layar", "Mengecilkan Window", "Shortcut Terlarang"
+  details?: string;
+}
+
+export interface ExamScheduleConfig {
+  startTime?: string; // e.g. "2026-07-29T08:00"
+  endTime?: string; // e.g. "2026-07-29T12:00"
+  sessionStatus?: 'DRAFT' | 'ACTIVE' | 'CLOSED';
+  lateToleranceMinutes?: number;
+  allowReviewAfterFinish?: boolean;
+  showScoreImmediately?: boolean;
+  strictAntiCheating?: boolean;
+  maxCheatingAllowed?: number;
+}
+
 export interface AppConfig {
   duration: number; // in minutes
   kkm: number; // 0 - 100
@@ -61,6 +78,7 @@ export interface AppConfig {
   adminUsername?: string; // Username Admin Utama (default: 'admincbt')
   adminPassword?: string; // Password Admin Utama (default: 'JuniorCBT2026')
   driveUploadUrl?: string; // Link Google Drive untuk Upload Hasil Jawaban Siswa
+  examSchedule?: ExamScheduleConfig; // Detail Pengaturan Jadwal & Ketentuan Ujian
 }
 
 export type ViewState = 'login' | 'admin' | 'pre-test' | 'test' | 'result' | 'review';
@@ -84,7 +102,14 @@ export interface StudentResult {
   answers: (string | null)[];
   warnings: number;
   submittedAt: string;
+  durationSpentMinutes?: number;
+  timeSpentSeconds?: number;
   questionSnapshots?: Question[];
+  cheatingLogs?: CheatingLog[];
+  ipAddress?: string;
+  locationInfo?: string;
+  deviceInfo?: string;
+  userAgent?: string;
 }
 
 export interface EncryptedResultPayload {

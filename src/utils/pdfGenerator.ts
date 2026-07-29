@@ -89,18 +89,103 @@ export function generateResultsPdfReport(
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.text(`Standar KKM: ${examInfo.kkm} | Total Peserta: ${totalSiswa} Siswa | Tuntas: ${passedCount} | Rata-Rata: ${avgScore}`, 14, currentY);
-  currentY += 5;
+  currentY += 6;
 
-  // 3. TABLE HASIL JAWABAN
-  const tableHead = [['No', 'NIS / No. Peserta', 'Nama Lengkap Siswa', 'Benar', 'Salah', 'Total', 'Nilai', 'Status']];
+  // 2.1 SECTION LEADERBOARD (TOP 10 RANKINGS)
+  const sortedByRank = [...results].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if ((a.warnings || 0) !== (b.warnings || 0)) return (a.warnings || 0) - (b.warnings || 0);
+    return b.correctCount - a.correctCount;
+  });
+
+  const top10 = sortedByRank.slice(0, 10);
+
+  if (top10.length > 0) {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text('LEADERBOARD PERINGKAT KELULUSAN SISWA (TOP 10 PESERTA TERBAIK)', 14, currentY);
+    currentY += 4;
+
+    const lbHead = [['Peringkat', 'NIS / No. Peserta', 'Nama Siswa', 'Skor Nilai', 'Benar/Salah', 'Pelanggaran', 'Status']];
+    const lbBody = top10.map((r, idx) => {
+      let rankText = `Ke-${idx + 1}`;
+      if (idx === 0) rankText = 'Juara 1 (Emas)';
+      if (idx === 1) rankText = 'Juara 2 (Perak)';
+      if (idx === 2) rankText = 'Juara 3 (Perunggu)';
+
+      return [
+        rankText,
+        r.studentInfo.noPeserta,
+        r.studentInfo.name,
+        r.score,
+        `${r.correctCount} / ${r.incorrectCount}`,
+        r.warnings > 0 ? `${r.warnings}x` : '0 (Bersih)',
+        r.isPassed ? 'LULUS' : 'REMIDI',
+      ];
+    });
+
+    autoTable(doc, {
+      startY: currentY,
+      head: lbHead,
+      body: lbBody,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [217, 119, 6], // Amber 600
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'center',
+      },
+      bodyStyles: {
+        fontSize: 7.5,
+        textColor: [30, 30, 30],
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 28, fontStyle: 'bold' },
+        1: { halign: 'left', cellWidth: 32 },
+        2: { halign: 'left' },
+        3: { halign: 'center', cellWidth: 18, fontStyle: 'bold' },
+        4: { halign: 'center', cellWidth: 22 },
+        5: { halign: 'center', cellWidth: 22 },
+        6: { halign: 'center', cellWidth: 20, fontStyle: 'bold' },
+      },
+      didParseCell: function (data) {
+        if (data.section === 'body' && data.column.index === 0) {
+          if (data.cell.raw === 'Juara 1 (Emas)') {
+            data.cell.styles.textColor = [180, 83, 9]; // Amber 700
+          } else if (data.cell.raw === 'Juara 2 (Perak)') {
+            data.cell.styles.textColor = [71, 85, 105]; // Slate 600
+          } else if (data.cell.raw === 'Juara 3 (Perunggu)') {
+            data.cell.styles.textColor = [194, 65, 12]; // Amber 800
+          }
+        }
+        if (data.section === 'body' && data.column.index === 6) {
+          data.cell.styles.textColor = data.cell.raw === 'LULUS' ? [16, 185, 129] : [239, 68, 68];
+        }
+      },
+      margin: { left: 14, right: 14 },
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // 3. TABLE HASIL JAWABAN SELURUH SISWA
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('DAFTAR REKAPITULASI HASIL JAWABAN SELURUH SISWA', 14, currentY);
+  currentY += 4;
+
+  const tableHead = [['No', 'NIS / No. Peserta', 'Nama Lengkap Siswa', 'Benar', 'Salah', 'Nilai', 'Pelanggaran', 'Status']];
   const tableBody = results.map((r, idx) => [
     idx + 1,
     r.studentInfo.noPeserta,
     r.studentInfo.name,
     r.correctCount,
     r.incorrectCount,
-    r.totalQuestions,
     r.score,
+    r.warnings > 0 ? `${r.warnings}x` : '0 (Bersih)',
     r.isPassed ? 'LULUS' : 'REMIDI',
   ]);
 
@@ -113,11 +198,11 @@ export function generateResultsPdfReport(
       fillColor: [30, 41, 59], // Slate 800
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8.5,
+      fontSize: 8,
       halign: 'center',
     },
     bodyStyles: {
-      fontSize: 8,
+      fontSize: 7.5,
       textColor: [30, 30, 30],
     },
     columnStyles: {
@@ -126,8 +211,8 @@ export function generateResultsPdfReport(
       2: { halign: 'left' },
       3: { halign: 'center', cellWidth: 15 },
       4: { halign: 'center', cellWidth: 15 },
-      5: { halign: 'center', cellWidth: 15 },
-      6: { halign: 'center', cellWidth: 18, fontStyle: 'bold' },
+      5: { halign: 'center', cellWidth: 18, fontStyle: 'bold' },
+      6: { halign: 'center', cellWidth: 22 },
       7: { halign: 'center', cellWidth: 22, fontStyle: 'bold' },
     },
     didParseCell: function (data) {
@@ -315,6 +400,11 @@ export function generateIndividualStudentPdf(
   currentY += 4.5;
 
   doc.text(`Waktu Submit        : ${result.submittedAt || new Date().toLocaleString('id-ID')}`, 14, currentY);
+  doc.text(`Alamat IP Client    : ${result.ipAddress || '127.0.0.1 (Local Client)'}`, pageWidth - 70, currentY);
+  currentY += 4.5;
+
+  doc.text(`Audit Keamanan      : ${result.warnings > 0 ? `${result.warnings}x Pelanggaran Terdeteksi` : 'Bersih (Bebas Pelanggaran)'}`, 14, currentY);
+  doc.text(`Info Perangkat      : ${result.deviceInfo || 'Browser Client'}`, pageWidth - 70, currentY);
   currentY += 7;
 
   // 4. DETAILED ANSWERS BREAKDOWN TABLE (HANYA SOAL YANG DIKERJAKAN)
@@ -388,7 +478,54 @@ export function generateIndividualStudentPdf(
     margin: { left: 14, right: 14 },
   });
 
-  let finalY = (doc as any).lastAutoTable.finalY + 12;
+  let finalY = (doc as any).lastAutoTable.finalY + 10;
+
+  // 4.1 RINCIAN DETEKSI KECURANGAN (JIKA ADA)
+  if (result.cheatingLogs && result.cheatingLogs.length > 0) {
+    if (finalY > 210) {
+      doc.addPage();
+      finalY = 20;
+    }
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(185, 28, 28);
+    doc.text('CATATAN DETAIL TIMELINE RIWAYAT PELANGGARAN UJIAN', 14, finalY);
+    finalY += 4;
+
+    const cheatHead = [['No', 'Waktu Kejadian', 'Jenis / Aktivitas Pelanggaran Terdeteksi']];
+    const cheatBody = result.cheatingLogs.map((log, lIdx) => [
+      lIdx + 1,
+      log.timestamp,
+      log.type,
+    ]);
+
+    autoTable(doc, {
+      startY: finalY,
+      head: cheatHead,
+      body: cheatBody,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [185, 28, 28],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 7.5,
+        halign: 'center',
+      },
+      bodyStyles: {
+        fontSize: 7.5,
+        textColor: [30, 30, 30],
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 10 },
+        1: { halign: 'center', cellWidth: 35 },
+        2: { halign: 'left' },
+      },
+      margin: { left: 14, right: 14 },
+    });
+
+    finalY = (doc as any).lastAutoTable.finalY + 12;
+  }
 
   if (finalY > 230) {
     doc.addPage();

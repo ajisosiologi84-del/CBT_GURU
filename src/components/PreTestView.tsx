@@ -20,6 +20,10 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
   onBackToPortal,
 }) => {
   const isLimitReached = studentAttemptsCount >= maxAttempts;
+  const sessionStatus = config.examSchedule?.sessionStatus || 'ACTIVE';
+  const isSessionClosed = sessionStatus === 'CLOSED';
+  const isSessionDraft = sessionStatus === 'DRAFT';
+  const isStartDisabled = isLimitReached || isSessionClosed || isSessionDraft;
 
   return (
     <div className="flex-1 flex items-center justify-center bg-slate-100 fixed inset-0 z-40 p-3 sm:p-6 overflow-y-auto custom-scrollbar">
@@ -45,7 +49,29 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
 
         {/* Content */}
         <div className="p-4 sm:p-8 overflow-y-auto custom-scrollbar">
-          {isLimitReached && (
+          {isSessionDraft && (
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 mb-6 text-amber-900">
+              <div className="flex items-center gap-2 font-black text-sm sm:text-base mb-1">
+                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" /> Sesi Ujian Belum Dibuka (Status DRAFT)
+              </div>
+              <p className="text-xs sm:text-sm leading-relaxed font-semibold">
+                Sesi ujian ini sedang dalam persiapan oleh Guru Pengawas. Tombol pengerjaan belum dapat diakses sampai status ujian diubah menjadi ACTIVE.
+              </p>
+            </div>
+          )}
+
+          {isSessionClosed && (
+            <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 sm:p-5 mb-6 text-red-900">
+              <div className="flex items-center gap-2 font-black text-sm sm:text-base mb-1">
+                <ShieldAlert className="w-5 h-5 text-red-600 shrink-0" /> Sesi Ujian Telah Ditutup (CLOSED)
+              </div>
+              <p className="text-xs sm:text-sm leading-relaxed font-semibold">
+                Waktu pelaksanaan ujian ini telah berakhir dan ditutup secara resmi oleh Guru Pengawas.
+              </p>
+            </div>
+          )}
+
+          {isLimitReached && !isSessionClosed && !isSessionDraft && (
             <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 sm:p-5 mb-6 text-red-900 animate-pulse">
               <div className="flex items-center gap-2 font-black text-sm sm:text-base mb-1">
                 <ShieldAlert className="w-5 h-5 text-red-600 shrink-0" /> Batas Maksimal Ujian Tercapai
@@ -105,14 +131,26 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
               Kembali ke Portal
             </button>
             <button
-              onClick={onStartTest}
+              onClick={() => {
+                if (!isStartDisabled) {
+                  onStartTest();
+                }
+              }}
+              disabled={isStartDisabled}
               className={`w-full sm:w-2/3 ${
-                isLimitReached 
-                  ? 'bg-slate-400 cursor-not-allowed' 
+                isStartDisabled 
+                  ? 'bg-slate-400 cursor-not-allowed opacity-75' 
                   : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800'
               } text-white font-bold py-3.5 sm:py-4 px-6 rounded-2xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 sm:gap-3 text-base sm:text-lg active:scale-[0.98] cursor-pointer`}
             >
-              <PlayCircle className="w-6 h-6 sm:w-7 sm:h-7" /> {isLimitReached ? 'Batas Ujian Tercapai' : 'Mulai Mengerjakan Ujian'}
+              <PlayCircle className="w-6 h-6 sm:w-7 sm:h-7" />
+              {isSessionDraft
+                ? 'Sesi Ujian DRAFT (Belum Dibuka)'
+                : isSessionClosed
+                ? 'Sesi Ujian CLOSED (Ditutup)'
+                : isLimitReached
+                ? 'Batas Ujian Tercapai'
+                : 'Mulai Mengerjakan Ujian'}
             </button>
           </div>
         </div>

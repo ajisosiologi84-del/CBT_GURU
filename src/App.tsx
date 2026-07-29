@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppConfig, Question, Option, ViewState, StudentInfo, StudentResult } from './types';
+import { AppConfig, Question, Option, ViewState, StudentInfo, StudentResult, CheatingLog } from './types';
 import { defaultQuestions } from './data/defaultQuestions';
 import { defaultStudents } from './data/defaultStudents';
 import { encryptResult } from './utils/crypto';
@@ -164,7 +164,32 @@ export default function App() {
   const [raguList, setRaguList] = useState<boolean[]>([]);
   const [timeRemaining, setTimeRemaining] = useState<number>(0); // in seconds
   const [warnings, setWarnings] = useState<number>(0);
-  const maxWarnings = 3;
+  const maxWarnings = config.examSchedule?.maxCheatingAllowed || 3;
+  const [cheatingLogs, setCheatingLogs] = useState<CheatingLog[]>([]);
+  const [ipAddress, setIpAddress] = useState<string>('180.252.12.11');
+  const [deviceInfo, setDeviceInfo] = useState<string>('Browser Client (Desktop)');
+
+  // Auto detect IP and Device Info
+  useEffect(() => {
+    try {
+      const ua = navigator.userAgent;
+      let platform = 'PC / Desktop';
+      if (/Android/i.test(ua)) platform = 'Android Mobile';
+      else if (/iPhone|iPad|iPod/i.test(ua)) platform = 'iOS Mobile';
+      else if (/Mac/i.test(ua)) platform = 'MacOS';
+      else if (/Linux/i.test(ua)) platform = 'Linux';
+      
+      const res = `${window.screen.width}x${window.screen.height}`;
+      setDeviceInfo(`${platform} (${res})`);
+
+      fetch('https://api.ipify.org?format=json')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.ip) setIpAddress(data.ip);
+        })
+        .catch(() => setIpAddress('180.252.12.11 (Local)'));
+    } catch (e) {}
+  }, []);
 
   // Modals & Popups State
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
@@ -299,6 +324,7 @@ export default function App() {
     setCurrentIndex(0);
     setTimeRemaining(config.duration * 60);
     setWarnings(0);
+    setCheatingLogs([]);
     setViewState('test');
   };
 
@@ -346,24 +372,31 @@ export default function App() {
 
       playWarningSound();
 
+      const logMsg = customMsg || 'Sistem mendeteksi Anda meninggalkan layar ujian atau mencoba berpindah aplikasi.';
+
+      setCheatingLogs((prev) => [
+        ...prev,
+        {
+          timestamp: new Date().toLocaleTimeString('id-ID'),
+          type: logMsg,
+        },
+      ]);
+
       setWarnings((prev) => {
         const nextWarnings = prev + 1;
         if (nextWarnings >= maxWarnings) {
           triggerAutoSubmit(
-            'Anda telah melanggar batas maksimal peringatan keamanan (3 kali). Ujian dihentikan paksa dan jawaban otomatis terkirim.'
+            `Anda telah melanggar batas maksimal peringatan keamanan (${maxWarnings} kali). Ujian dihentikan paksa dan jawaban otomatis terkirim.`
           );
           return nextWarnings;
         }
 
-        setWarningMsg(
-          customMsg ||
-            'Sistem mendeteksi Anda meninggalkan layar ujian atau mencoba berpindah aplikasi. Ini adalah pelanggaran tata tertib.'
-        );
+        setWarningMsg(logMsg);
         setIsWarningModalOpen(true);
         return nextWarnings;
       });
     },
-    [viewState, isWarningModalOpen]
+    [viewState, isWarningModalOpen, maxWarnings]
   );
 
   const triggerAutoSubmit = (msg: string) => {
@@ -443,15 +476,7 @@ export default function App() {
 
   // Submit Exam & Save Encrypted Student Result
   const handleFinishExamRequest = () => {
-    const unanswered = userAnswers.filter((a) => a === null).length;
-    let msg = 'Apakah Anda yakin ingin menyelesaikan ujian? Jawaban tidak dapat diubah setelah disubmit.';
-    if (unanswered > 0) {
-      msg = `PERHATIAN: Masih ada ${unanswered} soal yang belum dijawab! Anda yakin ingin mengakhiri?`;
-    }
-
-    showConfirm('Selesaikan Ujian?', msg, () => {
-      processSubmission();
-    });
+    processSubmission();
   };
 
   const processSubmission = () => {
@@ -474,6 +499,8 @@ export default function App() {
     const score = total > 0 ? Math.round((correct / total) * 100) : 0;
     const incorrect = total - correct;
     const isPassed = score >= config.kkm;
+    const timeSpent = (config.duration * 60) - timeRemaining;
+    const durationMins = Math.max(1, Math.round(timeSpent / 60));
 
     const resultObj: StudentResult = {
       id: `RES-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -487,7 +514,12 @@ export default function App() {
       answers: userAnswers,
       warnings,
       submittedAt: new Date().toLocaleString('id-ID'),
+      durationSpentMinutes: durationMins,
+      timeSpentSeconds: timeSpent,
       questionSnapshots: activeQuestions,
+      cheatingLogs,
+      ipAddress,
+      deviceInfo,
     };
 
     setFinalScore(score);
