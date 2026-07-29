@@ -12,6 +12,7 @@ export interface Question {
   image?: string; // Base64 data URL or image URL for question image / table / diagram
   isActive?: boolean; // Default true, toggle to enable/disable for exam
   mapel?: string; // Mata pelajaran (e.g. 'Sosiologi', 'Geografi', etc.)
+  subTopik?: string; // Sub Topik / Materi Ujian (e.g. 'Perubahan Sosial', 'Globalisasi', dll)
 }
 
 export interface StudentUser {

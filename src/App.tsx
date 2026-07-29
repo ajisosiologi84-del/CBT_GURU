@@ -568,6 +568,7 @@ export default function App() {
     explanation: string;
     image?: string;
     mapel?: string;
+    subTopik?: string;
     id?: number;
   }) => {
     let updatedQuestions = [...config.questions];
@@ -583,6 +584,7 @@ export default function App() {
           explanation: qData.explanation,
           image: qData.image,
           mapel: qData.mapel || updatedQuestions[idx].mapel || config.mapel || 'Sosiologi',
+          subTopik: qData.subTopik,
         };
       }
     } else {
@@ -595,6 +597,7 @@ export default function App() {
         explanation: qData.explanation,
         image: qData.image,
         mapel: qData.mapel || config.mapel || 'Sosiologi',
+        subTopik: qData.subTopik,
       });
     }
 

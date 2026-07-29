@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Question, Option } from '../types';
 import { formatQuestionText } from '../utils/questionFormatter';
-import { Edit3, PlusCircle, CheckCircle2, Save, X, Image as ImageIcon, Upload, Trash2, Table, Link as LinkIcon, FileImage, Eye, Sparkles } from 'lucide-react';
+import { Edit3, PlusCircle, CheckCircle2, Save, X, Image as ImageIcon, Upload, Trash2, Table, Link as LinkIcon, FileImage, Eye, Sparkles, Tag } from 'lucide-react';
 
 interface QuestionEditorModalProps {
   isOpen: boolean;
@@ -14,6 +14,7 @@ interface QuestionEditorModalProps {
     explanation: string;
     image?: string;
     mapel?: string;
+    subTopik?: string;
     id?: number;
   }) => void;
   onClose: () => void;
@@ -32,6 +33,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
   const [questionText, setQuestionText] = useState('');
   const [explanationText, setExplanationText] = useState('');
   const [selectedMapel, setSelectedMapel] = useState<string>(defaultMapel);
+  const [subTopikText, setSubTopikText] = useState<string>('');
   const [imageString, setImageString] = useState<string>('');
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState('');
@@ -47,6 +49,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       setQuestionText(editingQuestion.question);
       setExplanationText(editingQuestion.explanation || '');
       setSelectedMapel(editingQuestion.mapel || defaultMapel);
+      setSubTopikText(editingQuestion.subTopik || '');
       setImageString(editingQuestion.image || '');
       setImageUrlInput(editingQuestion.image && !editingQuestion.image.startsWith('data:') ? editingQuestion.image : '');
       const optTexts = labels.map((label, idx) => {
@@ -61,6 +64,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       setQuestionText('');
       setExplanationText('');
       setSelectedMapel(defaultMapel);
+      setSubTopikText('');
       setImageString('');
       setImageUrlInput('');
       setOptionsText(['', '', '', '', '']);
@@ -193,6 +197,7 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       explanation: explanationText.trim() || 'Tidak ada pembahasan.',
       image: imageString.trim() || undefined,
       mapel: selectedMapel,
+      subTopik: subTopikText.trim() || undefined,
     });
   };
 
@@ -242,21 +247,37 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
 
         {activeTab === 'editor' ? (
           <div className="p-6 overflow-y-auto flex-1 space-y-5 custom-scrollbar">
-            <div>
-              <label className="block font-bold text-gray-800 mb-1.5 text-sm">
-                Mata Pelajaran <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={selectedMapel}
-                onChange={(e) => setSelectedMapel(e.target.value)}
-                className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-bold bg-white cursor-pointer"
-              >
-                {mapelList.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-bold text-gray-800 mb-1.5 text-sm">
+                  Mata Pelajaran <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedMapel}
+                  onChange={(e) => setSelectedMapel(e.target.value)}
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-bold bg-white cursor-pointer"
+                >
+                  {mapelList.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-800 mb-1.5 text-sm flex items-center justify-between">
+                  <span>Sub Topik / Materi Ujian</span>
+                  <span className="text-xs font-normal text-gray-400">(Opsional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={subTopikText}
+                  onChange={(e) => setSubTopikText(e.target.value)}
+                  placeholder="Contoh: Perubahan Sosial, Globalisasi, dll."
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-medium bg-white"
+                />
+              </div>
             </div>
 
             <div>
@@ -422,10 +443,15 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
             </div>
 
             {/* Badges */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="bg-sky-100 text-sky-800 text-xs font-extrabold px-3 py-1 rounded-lg border border-sky-200">
                 Mata Pelajaran: {selectedMapel}
               </span>
+              {subTopikText.trim() && (
+                <span className="bg-amber-100 text-amber-900 text-xs font-extrabold px-3 py-1 rounded-lg border border-amber-300 flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5 text-amber-600" /> Sub Topik / Materi: {subTopikText.trim()}
+                </span>
+              )}
             </div>
 
             {/* Lampiran Gambar jika ada */}

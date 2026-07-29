@@ -59,6 +59,7 @@ import {
   Monitor,
   Activity,
   Zap,
+  Tag,
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -592,7 +593,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleDownloadTemplate = () => {
     const currentMapel = selectedBankMapel !== 'ALL' ? selectedBankMapel : mapelInput || config.mapel || 'Sosiologi';
     const ws_data = [
-      ['Pertanyaan', 'Opsi_A', 'Opsi_B', 'Opsi_C', 'Opsi_D', 'Opsi_E', 'Kunci_Jawaban', 'Pembahasan', 'Mapel'],
+      ['Pertanyaan', 'Opsi_A', 'Opsi_B', 'Opsi_C', 'Opsi_D', 'Opsi_E', 'Kunci_Jawaban', 'Pembahasan', 'Mapel', 'Sub_Topik'],
       [
         `Contoh Soal (${currentMapel}): Perubahan sosial di masyarakat dipengaruhi oleh faktor...`,
         'Globalisasi',
@@ -603,6 +604,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         'A',
         'Pembahasan mengenai faktor pendorong perubahan sosial.',
         currentMapel,
+        'Perubahan Sosial & Teknologi',
       ],
       [
         `Contoh Soal 2 (${currentMapel}): Masuknya budaya asing yang diterima tanpa menghilangkan budaya asli disebut...`,
@@ -614,6 +616,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         'B',
         'Akulturasi adalah percampuran dua budaya di mana unsur budaya asli masih terlihat.',
         currentMapel,
+        'Globalisasi & Glokalisasi',
       ],
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
@@ -650,6 +653,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           const key = (row['Kunci_Jawaban'] || row['kunci_jawaban'] || row['Kunci'] || '').toString().trim().toUpperCase();
           const exp = row['Pembahasan'] || row['pembahasan'] || 'Tidak ada pembahasan.';
           const rowMapel = row['Mapel'] || row['Mata_Pelajaran'] || row['mapel'];
+          const rowSubTopik = row['Sub_Topik'] || row['sub_topik'] || row['SubTopik'] || row['subtopik'] || row['Materi'] || row['materi'];
           const rowImg = row['Gambar'] || row['gambar'] || row['URL_Gambar'] || row['url_gambar'] || row['Image'] || row['image'];
 
           if (rowMapel && !detectedMapel) {
@@ -663,6 +667,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               explanation: exp,
               image: rowImg ? String(rowImg).trim() : undefined,
               mapel: rowMapel ? String(rowMapel).trim() : 'Sosiologi',
+              subTopik: rowSubTopik ? String(rowSubTopik).trim() : undefined,
               options: [
                 { id: 'A', text: String(optA), isCorrect: key === 'A' },
                 { id: 'B', text: String(optB), isCorrect: key === 'B' },
@@ -1211,7 +1216,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // --- FILTERS & STATS ---
   const filteredQuestions = config.questions.filter((q) => {
-    const matchesSearch = q.question.toLowerCase().includes(searchQuery.toLowerCase());
+    const query = searchQuery.toLowerCase();
+    const matchesSearch =
+      q.question.toLowerCase().includes(query) ||
+      (q.subTopik && q.subTopik.toLowerCase().includes(query));
     const matchesMapel =
       selectedBankMapel === 'ALL' ||
       !q.mapel ||
@@ -2339,6 +2347,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <span className="bg-sky-100 text-sky-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md border border-sky-200/80">
                               {q.mapel || mapelInput || 'Sosiologi'}
                             </span>
+                            {q.subTopik && (
+                              <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2.5 py-0.5 rounded-md border border-amber-300/80 flex items-center gap-1">
+                                <Tag className="w-3 h-3 text-amber-600" /> {q.subTopik}
+                              </span>
+                            )}
                             {q.image && (
                               <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md border border-purple-200/80 flex items-center gap-1">
                                 <ImageIcon className="w-3 h-3 text-purple-600" /> Ada Gambar/Tabel

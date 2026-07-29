@@ -11,7 +11,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Membawa masyarakat menuju era kemunduran peradaban karena ketergantungan pada mesin.", isCorrect: false },
       { id: "E", text: "Adalah proses linear yang pada akhirnya akan menghancurkan sistem sosial itu sendiri.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Perubahan sosial, khususnya akibat inovasi teknologi (invention), memiliki sifat ambivalen atau bermuka dua. Ia menghancurkan struktur lama (kehilangan pekerjaan) namun sekaligus menciptakan struktur baru (profesi baru)."
+    explanation: "HOTS Analisis (C4): Perubahan sosial, khususnya akibat inovasi teknologi (invention), memiliki sifat ambivalen atau bermuka dua. Ia menghancurkan struktur lama (kehilangan pekerjaan) namun sekaligus menciptakan struktur baru (profesi baru).",
+    mapel: "Sosiologi",
+    subTopik: "Perubahan Sosial & Teknologi"
   },
   {
     id: 2,
@@ -23,7 +25,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Konflik kelas antara tengkulak tradisional dan platform e-commerce asing.", isCorrect: false },
       { id: "E", text: "Cultural lag, karena masyarakat desa belum siap menerima teknologi digital.", isCorrect: false }
     ],
-    explanation: "HOTS Evaluasi (C5): Teori evolusi unilinear berasumsi semua masyarakat melewati tahapan yang sama. Penggunaan e-commerce menunjukkan transisi dari masyarakat tradisional menuju masyarakat modern/industri yang mengedepankan efisiensi dan rasionalitas pasar."
+    explanation: "HOTS Evaluasi (C5): Teori evolusi unilinear berasumsi semua masyarakat melewati tahapan yang sama. Penggunaan e-commerce menunjukkan transisi dari masyarakat tradisional menuju masyarakat modern/industri yang mengedepankan efisiensi dan rasionalitas pasar.",
+    mapel: "Sosiologi",
+    subTopik: "Teori Evolusi Sosial"
   },
   {
     id: 3,
@@ -35,7 +39,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Melakukan demonstrasi anarkis untuk menolak segala bentuk investasi dan budaya asing.", isCorrect: false },
       { id: "E", text: "Menciptakan budaya tandingan yang bertujuan untuk menghancurkan kebudayaan negara maju.", isCorrect: false }
     ],
-    explanation: "HOTS Mencipta/Sintesis (C6): Memblokir atau mengisolasi adalah hal mustahil di era global. Solusi sosiologis yang adaptif adalah glokalisasi: membekali generasi dengan literasi kritis (filter) sekaligus memperkuat fundamental lokal (identitas)."
+    explanation: "HOTS Mencipta/Sintesis (C6): Memblokir atau mengisolasi adalah hal mustahil di era global. Solusi sosiologis yang adaptif adalah glokalisasi: membekali generasi dengan literasi kritis (filter) sekaligus memperkuat fundamental lokal (identitas).",
+    mapel: "Sosiologi",
+    subTopik: "Globalisasi & Glokalisasi"
   },
   {
     id: 4,
@@ -47,7 +53,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Hilangnya sama sekali konflik sosial karena kebutuhan ekonomi masyarakat telah terpenuhi penuh.", isCorrect: false },
       { id: "E", text: "Evolusi biologis masyarakat lokal akibat paparan limbah industri asing.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Industrialisasi di wilayah baru akan menggeser basis ekonomi (agraris ke industri). Hal ini mengubah stratifikasi sosial, munculnya kelas buruh (proletar), kelas manajerial, dan berpotensi menggeser nilai-nilai gotong royong menjadi individualistis."
+    explanation: "HOTS Analisis (C4): Industrialisasi di wilayah baru akan menggeser basis ekonomi (agraris ke industri). Hal ini mengubah stratifikasi sosial, munculnya kelas buruh (proletar), kelas manajerial, dan berpotensi menggeser nilai-nilai gotong royong menjadi individualistis.",
+    mapel: "Sosiologi",
+    subTopik: "Industrialisasi & Struktur Sosial"
   },
   {
     id: 5,
@@ -59,7 +67,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Penetrasi kebudayaan secara paksa (penetration pacifique) oleh negara adidaya.", isCorrect: false },
       { id: "E", text: "Modernisasi yang berjalan sesuai dengan teori evolusi unilinear Comte.", isCorrect: false }
     ],
-    explanation: "HOTS Evaluasi (C5): Konsep ambivalensi menunjukkan adanya dua sisi koin yang berlawanan. Globalisasi fast fashion memajukan pasar (positif) namun mengeksploitasi lingkungan dan menciptakan hedonisme (negatif)."
+    explanation: "HOTS Evaluasi (C5): Konsep ambivalensi menunjukkan adanya dua sisi koin yang berlawanan. Globalisasi fast fashion memajukan pasar (positif) namun mengeksploitasi lingkungan dan menciptakan hedonisme (negatif).",
+    mapel: "Sosiologi",
+    subTopik: "Globalisasi & Lingkungan"
   },
   {
     id: 6,
@@ -71,7 +81,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Etnosentrisme, sikap remaja yang merendahkan kebudayaan asing.", isCorrect: false },
       { id: "E", text: "Dekadensi moral, yang selalu terjadi pada setiap remaja pengguna media sosial.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Gegar budaya (Cultural shock) tidak hanya terjadi saat berpindah tempat fisik, tapi juga saat terpapar sistem nilai baru yang sangat berbeda melalui media digital, menyebabkan disorientasi pribadi."
+    explanation: "HOTS Analisis (C4): Gegar budaya (Cultural shock) tidak hanya terjadi saat berpindah tempat fisik, tapi juga saat terpapar sistem nilai baru yang sangat berbeda melalui media digital, menyebabkan disorientasi pribadi.",
+    mapel: "Sosiologi",
+    subTopik: "Gegar Budaya & Sosialisasi"
   },
   {
     id: 7,
@@ -83,7 +95,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Melemahnya sistem kapitalisme karena perusahaan kehilangan kontrol atas pekerjanya.", isCorrect: false },
       { id: "E", text: "Kembalinya masyarakat ke fase pra-industri yang bergantung pada alam.", isCorrect: false }
     ],
-    explanation: "HOTS Evaluasi (C5): Kerja remote menginvasi ruang privat. Rumah yang tadinya tempat istirahat menjadi tempat produksi. Ini merekonstruksi peran keluarga dan manajemen batas (boundary management) antara karir dan kehidupan domestik."
+    explanation: "HOTS Evaluasi (C5): Kerja remote menginvasi ruang privat. Rumah yang tadinya tempat istirahat menjadi tempat produksi. Ini merekonstruksi peran keluarga dan manajemen batas (boundary management) antara karir dan kehidupan domestik.",
+    mapel: "Sosiologi",
+    subTopik: "Perubahan Struktur Kerja"
   },
   {
     id: 8,
@@ -95,7 +109,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Pemerintah secara otoriter mengisolasi Bali dari dunia internasional selamanya.", isCorrect: false },
       { id: "E", text: "Masyarakat Bali menolak seluruh bentuk teknologi dari luar secara total.", isCorrect: false }
     ],
-    explanation: "HOTS Sintesis (C6): Homogenisasi (McDonaldisasi) berasumsi seluruh dunia akan seragam. Nyepi membuktikan tesis heterogenisasi/glokalisasi: lokalitas bisa bertahan, menyesuaikan, dan bahkan membatasi kekuatan global melalui resiliensi kultural."
+    explanation: "HOTS Sintesis (C6): Homogenisasi (McDonaldisasi) berasumsi seluruh dunia akan seragam. Nyepi membuktikan tesis heterogenisasi/glokalisasi: lokalitas bisa bertahan, menyesuaikan, dan bahkan membatasi kekuatan global melalui resiliensi kultural.",
+    mapel: "Sosiologi",
+    subTopik: "Kearifan Lokal & Resiliensi"
   },
   {
     id: 9,
@@ -107,7 +123,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Pengaruh difusi budaya primitif yang direvitalisasi ke bentuk modern.", isCorrect: false },
       { id: "E", text: "Kebijakan politik isolasionisme yang memaksa warga menciptakan pekerjaan sendiri.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Perkembangan teknologi digital adalah agen perubahan (invention). Menurut Durkheim, ini mendorong pembagian kerja yang semakin kompleks (solidaritas organis) dengan spesialisasi profesi yang sangat tinggi."
+    explanation: "HOTS Analisis (C4): Perkembangan teknologi digital adalah agen perubahan (invention). Menurut Durkheim, ini mendorong pembagian kerja yang semakin kompleks (solidaritas organis) dengan spesialisasi profesi yang sangat tinggi.",
+    mapel: "Sosiologi",
+    subTopik: "Inovasi Teknologi & Profesi Baru"
   },
   {
     id: 10,
@@ -119,7 +137,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Perubahan evolusioner selalu gagal diterapkan dalam masalah rasial.", isCorrect: false },
       { id: "E", text: "Diskriminasi adalah hukum alam yang tidak dapat diintervensi oleh sistem hukum buatan manusia.", isCorrect: false }
     ],
-    explanation: "HOTS Evaluasi (C5): Ini adalah bentuk lain dari Cultural Lag, di mana hukum/regulasi (bisa dianggap elemen formal/material) berubah cepat, namun norma, prasangka, dan kebiasaan yang mengakar (imaterial) lambat berubah."
+    explanation: "HOTS Evaluasi (C5): Ini adalah bentuk lain dari Cultural Lag, di mana hukum/regulasi (bisa dianggap elemen formal/material) berubah cepat, namun norma, prasangka, dan kebiasaan yang mengakar (imaterial) lambat berubah.",
+    mapel: "Sosiologi",
+    subTopik: "Cultural Lag & Hukum"
   },
   {
     id: 11,
@@ -131,7 +151,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Institusional, karena dilakukan oleh lembaga negara yang berwenang.", isCorrect: false },
       { id: "E", text: "Evolutif, sebagai bentuk tertinggi dari sistem hukum demokrasi modern.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Cancel culture bertindak sebagai kontrol sosial informal yang sangat koersif. Namun, sifatnya disosiatif karena sering memicu konflik, perundungan siber (cyberbullying), dan melangkahi proses peradilan institusional (due process of law)."
+    explanation: "HOTS Analisis (C4): Cancel culture bertindak sebagai kontrol sosial informal yang sangat koersif. Namun, sifatnya disosiatif karena sering memicu konflik, perundungan siber (cyberbullying), dan melangkahi proses peradilan institusional (due process of law).",
+    mapel: "Sosiologi",
+    subTopik: "Kontrol Sosial & Media Digital"
   },
   {
     id: 12,
@@ -143,7 +165,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Penurunan tingkat polusi kota karena warga kumuh tidak memiliki kendaraan bermotor.", isCorrect: false },
       { id: "E", text: "Kembalinya nilai-nilai agraris di tengah kota metropolitan karena latar belakang pendatang.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Perubahan demografis (urbanisasi tak terkendali) menyebabkan overpopulasi dan marginalisasi. Ini bermuara pada patologi sosial (penyakit sosial) akibat disorganisasi sosial dan himpitan ekonomi."
+    explanation: "HOTS Analisis (C4): Perubahan demografis (urbanisasi tak terkendali) menyebabkan overpopulasi dan marginalisasi. Ini bermuara pada patologi sosial (penyakit sosial) akibat disorganisasi sosial dan himpitan ekonomi.",
+    mapel: "Sosiologi",
+    subTopik: "Urbanisasi & Demografi"
   },
   {
     id: 13,
@@ -155,7 +179,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Keinginan masyarakat global untuk kembali ke sistem pemerintahan monarki.", isCorrect: false },
       { id: "E", text: "Dominasi kebudayaan Timur yang menggeser hegemoni kebudayaan Barat.", isCorrect: false }
     ],
-    explanation: "HOTS Evaluasi (C5): Modernisasi dan industrialisasi rakus sering mengorbankan ekologi. Gerakan sosial iklim lahir sebagai antitesis dan upaya korektif dari masyarakat sipil terhadap kegagalan negara/korporasi menjaga lingkungan hidup (teori gerakan sosial baru)."
+    explanation: "HOTS Evaluasi (C5): Modernisasi dan industrialisasi rakus sering mengorbankan ekologi. Gerakan sosial iklim lahir sebagai antitesis dan upaya korektif dari masyarakat sipil terhadap kegagalan negara/korporasi menjaga lingkungan hidup (teori gerakan sosial baru).",
+    mapel: "Sosiologi",
+    subTopik: "Gerakan Sosial & Lingkungan"
   },
   {
     id: 14,
@@ -167,7 +193,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Bom ikan merupakan warisan budaya leluhur yang diakui oleh UNESCO.", isCorrect: false },
       { id: "E", text: "Pemerintah tidak pernah memberikan sosialisasi mengenai bahaya bom ikan.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Vested interest adalah kepentingan yang telah tertanam kuat. Nelayan yang biasa menggunakan bom mendapat hasil instan (ekonomi). Mengubah ini sulit karena mereka merasa inovasi baru akan merugikan pendapatan jangka pendek mereka."
+    explanation: "HOTS Analisis (C4): Vested interest adalah kepentingan yang telah tertanam kuat. Nelayan yang biasa menggunakan bom mendapat hasil instan (ekonomi). Mengubah ini sulit karena mereka merasa inovasi baru akan merugikan pendapatan jangka pendek mereka.",
+    mapel: "Sosiologi",
+    subTopik: "Pemberdayaan & Vested Interest"
   },
   {
     id: 15,
@@ -179,7 +207,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Simpati belaka tanpa ada perubahan perilaku di dunia nyata.", isCorrect: false },
       { id: "E", text: "Akomodasi paksaan antara budaya lokal dengan budaya Korea Selatan.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Interaksi sosial yang terjadi adalah imitasi (meniru gaya) dan identifikasi (ingin menjadi sama dengan idola). Globalisasi memfasilitasi proses psikologis-sosiologis ini terjadi secara transnasional (melewati batas negara)."
+    explanation: "HOTS Analisis (C4): Interaksi sosial yang terjadi adalah imitasi (meniru gaya) dan identifikasi (ingin menjadi sama dengan idola). Globalisasi memfasilitasi proses psikologis-sosiologis ini terjadi secara transnasional (melewati batas negara).",
+    mapel: "Sosiologi",
+    subTopik: "Interaksi Sosial & Imitasi"
   },
   {
     id: 16,
@@ -191,7 +221,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Konsumen yang memiliki kebebasan memilih produk di e-commerce.", isCorrect: false },
       { id: "E", text: "Akademisi yang menulis teori-teori sosiologi kontemporer.", isCorrect: false }
     ],
-    explanation: "HOTS Sintesis/Evaluasi (C5-C6): Dalam kapitalisme pengawasan (surveillance capitalism), 'alat produksi' bukan lagi sekadar mesin pabrik, melainkan kepemilikan atas server, algoritma, dan Big Data. Big Tech adalah borjuis baru yang mengeksploitasi data (sebagai komoditas baru)."
+    explanation: "HOTS Sintesis/Evaluasi (C5-C6): Dalam kapitalisme pengawasan (surveillance capitalism), 'alat produksi' bukan lagi sekadar mesin pabrik, melainkan kepemilikan atas server, algoritma, dan Big Data. Big Tech adalah borjuis baru yang mengeksploitasi data (sebagai komoditas baru).",
+    mapel: "Sosiologi",
+    subTopik: "Teori Konflik & Kapitalisme Digital"
   },
   {
     id: 17,
@@ -203,7 +235,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Membiarkan mekanisme pasar bebas menentukan harga tanah tanpa campur tangan.", isCorrect: false },
       { id: "E", text: "Mendoktrin masyarakat adat agar membuang kepercayaan spiritual mereka demi modernisasi.", isCorrect: false }
     ],
-    explanation: "HOTS Sintesis (C6): Konflik ini berakar pada benturan nilai. Solusi sosiologis bukan dengan pemaksaan (koersi), melainkan akomodasi (mediasi). Mengakui hak ulayat dan integrasi ekonomi berkelanjutan adalah jalan keluar resolusi konflik."
+    explanation: "HOTS Sintesis (C6): Konflik ini berakar pada benturan nilai. Solusi sosiologis bukan dengan pemaksaan (koersi), melainkan akomodasi (mediasi). Mengakui hak ulayat dan integrasi ekonomi berkelanjutan adalah jalan keluar resolusi konflik.",
+    mapel: "Sosiologi",
+    subTopik: "Konflik Agraria & Akomodasi"
   },
   {
     id: 18,
@@ -215,7 +249,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Menghapuskan sama sekali pengajaran ilmu sosial dan humaniora di masa depan.", isCorrect: false },
       { id: "E", text: "Memastikan semua lulusan menjadi pegawai negeri sipil yang terstandarisasi.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Revolusi industri 4.0 mengotomatisasi pekerjaan rutin. Pendidikan (sebagai institusi sosial) harus beradaptasi (fungsi adaptasi Parson) dengan menghasilkan individu dengan skill yang tidak dimiliki mesin: nalar kritis, empati, dan kreativitas kompleks."
+    explanation: "HOTS Analisis (C4): Revolusi industri 4.0 mengotomatisasi pekerjaan rutin. Pendidikan (sebagai institusi sosial) harus beradaptasi (fungsi adaptasi Parson) dengan menghasilkan individu dengan skill yang tidak dimiliki mesin: nalar kritis, empati, dan kreativitas kompleks.",
+    mapel: "Sosiologi",
+    subTopik: "Institusi Pendidikan & Adaptasi"
   },
   {
     id: 19,
@@ -227,7 +263,9 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Budaya lokal harus disubordinasi di bawah kebudayaan mayoritas dunia.", isCorrect: false },
       { id: "E", text: "Sistem sosial masyarakat Minangkabau tertutup terhadap inovasi teknologi.", isCorrect: false }
     ],
-    explanation: "HOTS Evaluasi (C5): Eksistensi Rendang di kancah global adalah contoh sukses diplomasi gastro (gastro-diplomacy) dan glokalisasi. Identitas lokal tidak hancur oleh globalisasi, melainkan bisa berekspansi (menjadi pemain global) dengan strategi yang tepat."
+    explanation: "HOTS Evaluasi (C5): Eksistensi Rendang di kancah global adalah contoh sukses diplomasi gastro (gastro-diplomacy) dan glokalisasi. Identitas lokal tidak hancur oleh globalisasi, melainkan bisa berekspansi (menjadi pemain global) dengan strategi yang tepat.",
+    mapel: "Sosiologi",
+    subTopik: "Diplomasi Budaya & Kuliner"
   },
   {
     id: 20,
@@ -239,6 +277,8 @@ export const defaultQuestions: Question[] = [
       { id: "D", text: "Modernisasi yang mengharuskan setiap orang memiliki rumah besar.", isCorrect: false },
       { id: "E", text: "Tradisi asketisme agama kuno yang mewajibkan kemiskinan sukarela.", isCorrect: false }
     ],
-    explanation: "HOTS Analisis (C4): Minimalisme adalah gerakan sosial berbasis gaya hidup (lifestyle movement). Ia lahir sebagai antitesis (reaksi penolakan) terhadap norma dominan kapitalisme yang mengukur kesuksesan dari akumulasi materi (konsumerisme akut)."
+    explanation: "HOTS Analisis (C4): Minimalisme adalah gerakan sosial berbasis gaya hidup (lifestyle movement). Ia lahir sebagai antitesis (reaksi penolakan) terhadap norma dominan kapitalisme yang mengukur kesuksesan dari akumulasi materi (konsumerisme akut).",
+    mapel: "Sosiologi",
+    subTopik: "Gaya Hidup & Anti-Konsumerisme"
   }
 ];
