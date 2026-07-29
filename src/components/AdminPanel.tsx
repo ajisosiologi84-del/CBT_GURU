@@ -60,6 +60,10 @@ import {
   Activity,
   Zap,
   Tag,
+  ArrowRight,
+  ChevronRight,
+  CheckCircle2,
+  Compass,
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -89,7 +93,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   showAlert,
   showConfirm,
 }) => {
-  const [activeTab, setActiveTab] = useState<'bank' | 'rekap' | 'analisis' | 'students' | 'token' | 'mapel' | 'backup' | 'schedule'>('bank');
+  const [activeTab, setActiveTab] = useState<'panduan' | 'bank' | 'rekap' | 'analisis' | 'students' | 'token' | 'mapel' | 'backup' | 'schedule'>('panduan');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Leaderboard & Audit Modal State
@@ -1579,6 +1583,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <nav className="space-y-1.5">
                 <button
                   onClick={() => {
+                    setActiveTab('panduan');
+                    setIsSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
+                    activeTab === 'panduan'
+                      ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40 font-black'
+                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <GraduationCap className="w-4 h-4 text-purple-400 shrink-0" />
+                    <span>Panduan Guru</span>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      activeTab === 'panduan'
+                        ? 'bg-purple-800 text-white'
+                        : 'bg-purple-950/80 text-purple-300 border border-purple-500/30'
+                    }`}
+                  >
+                    Petunjuk
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {
                     setActiveTab('mapel');
                     setIsSidebarOpen(false);
                   }}
@@ -1828,6 +1858,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <div className="min-w-0">
               <h2 className="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2 truncate">
+                {activeTab === 'panduan' && <GraduationCap className="w-4.5 h-4.5 text-purple-600 shrink-0" />}
                 {activeTab === 'mapel' && <BookOpen className="w-4.5 h-4.5 text-sky-600 shrink-0" />}
                 {activeTab === 'bank' && <Database className="w-4.5 h-4.5 text-blue-600 shrink-0" />}
                 {activeTab === 'students' && <Users className="w-4.5 h-4.5 text-indigo-600 shrink-0" />}
@@ -1835,6 +1866,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {activeTab === 'schedule' && <Clock className="w-4.5 h-4.5 text-orange-500 shrink-0" />}
                 {activeTab === 'rekap' && <FileCheck className="w-4.5 h-4.5 text-emerald-600 shrink-0" />}
                 <span>
+                  {activeTab === 'panduan' && 'Panduan Alur Kerja Guru — Portal CBT GuruAI'}
                   {activeTab === 'mapel' && 'Pengaturan Mata Pelajaran & Header Ujian'}
                   {activeTab === 'bank' && 'Bank Soal & Kelola Pertanyaan'}
                   {activeTab === 'students' && 'Manajemen User & Data Siswa'}
@@ -1869,6 +1901,337 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {/* Scrollable Main Content Container */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {/* TAB: PANDUAN UNTUK GURU */}
+          {activeTab === 'panduan' && (
+            <div className="p-4 sm:p-6 max-w-5xl mx-auto w-full space-y-6">
+              {/* Hero Banner Panduan */}
+              <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-lg border border-purple-800/50 relative overflow-hidden">
+                <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-500/20 via-transparent to-transparent pointer-events-none" />
+                
+                <div className="relative z-10 space-y-3">
+                  <div className="inline-flex items-center gap-2 bg-purple-500/20 text-purple-300 text-xs font-bold px-3 py-1 rounded-full border border-purple-400/30">
+                    <GraduationCap className="w-4 h-4 text-purple-300" />
+                    <span>Panduan Resmi Penggunaan Portal CBT GuruAI</span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white leading-tight">
+                    Alur Kerja Runtut Persiapan Ujian CBT
+                  </h2>
+                  <p className="text-xs sm:text-sm text-purple-200/90 leading-relaxed max-w-3xl">
+                    Panduan praktis langkah demi langkah bagi Bapak/Ibu Guru untuk menyiapkan mata pelajaran, merakit bank soal, mengatur parameter ujian, hingga mengunduh rekap nilai dan analisis butir soal secara akurat.
+                  </p>
+
+                  {/* Operational Status Chips */}
+                  <div className="pt-2 grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                    <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Mapel Aktif</span>
+                      <span className="text-xs font-black text-sky-400 truncate block">{mapelInput || 'Sosiologi'}</span>
+                    </div>
+                    <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Bank Soal</span>
+                      <span className="text-xs font-black text-blue-400 block">{config.questions.length} Soal</span>
+                    </div>
+                    <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Peserta Ujian</span>
+                      <span className="text-xs font-black text-indigo-400 block">{studentsList.length} Siswa</span>
+                    </div>
+                    <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Sesi Ujian</span>
+                      <span className={`text-xs font-black block ${sessionStatus === 'ACTIVE' ? 'text-emerald-400' : sessionStatus === 'DRAFT' ? 'text-amber-400' : 'text-red-400'}`}>
+                        {sessionStatus}
+                      </span>
+                    </div>
+                    <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center col-span-2 sm:col-span-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Token Ujian</span>
+                      <span className="text-xs font-mono font-black text-amber-400 block">{currentToken}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Runtut 7 Langkah Persiapan Ujian */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-base text-slate-800 flex items-center gap-2">
+                    <ListChecks className="w-5 h-5 text-purple-600" />
+                    <span>Langkah demi Langkah Persiapan Ujian (Runtut 1 - 7)</span>
+                  </h3>
+                  <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
+                    Sistem CBT GuruAI
+                  </span>
+                </div>
+
+                {/* LANGKAH 1 */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-sky-600 text-white font-black text-xs px-3 py-1 rounded-xl shadow-xs shrink-0">
+                        LANGKAH 1
+                      </span>
+                      <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-sky-600" />
+                        Pengaturan Mata Pelajaran & Header Ujian
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('mapel')}
+                      className="inline-flex items-center gap-1.5 text-xs font-extrabold text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-200 transition-all self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Buka Menu Mata Pelajaran</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                    <p className="font-semibold text-slate-800">
+                      Sebelum menyusun soal, tentukan dahulu identitas dan header ujian yang akan ditampilkan pada layar siswa:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 pl-1 text-slate-700">
+                      <li>Masuk ke menu <strong className="text-sky-700">Mata Pelajaran</strong>.</li>
+                      <li>Pilih atau ketik **Mata Pelajaran Aktif** (Contoh: <em>Sosiologi</em>, <em>Geografi</em>, <em>Matematika</em>, dll).</li>
+                      <li>Isi **Judul Header Ujian** (Contoh: <em>Assessment TKA SMA</em>, <em>Penilaian Akhir Semester</em>) dan **Sub Judul**.</li>
+                      <li>Isi data **Nama Sekolah**, **Nama Guru Pengampu**, dan konfigurasi **Kop Sekolah** agar tercetak rapi saat mengunduh Laporan PDF.</li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* LANGKAH 2 */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-blue-600 text-white font-black text-xs px-3 py-1 rounded-xl shadow-xs shrink-0">
+                        LANGKAH 2
+                      </span>
+                      <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                        <Database className="w-4 h-4 text-blue-600" />
+                        Input Soal & Kelola Bank Soal
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('bank')}
+                      className="inline-flex items-center gap-1.5 text-xs font-extrabold text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-blue-200 transition-all self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Buka Bank Soal</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                    <p className="font-semibold text-slate-800">
+                      Isi pertanyaan dan kunci jawaban ke dalam Bank Soal melalui cara manual atau impor Excel:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 pl-1 text-slate-700">
+                      <li>Masuk ke menu <strong className="text-blue-700">Bank Soal</strong>.</li>
+                      <li>Klik **+ Tambah Soal** untuk mengisi soal secara manual, ATAU klik **Unduh Template Excel (.xlsx)** dan unggah kembali file Excel yang telah terisi.</li>
+                      <li>Setiap soal wajib memiliki: Pertanyaan, Pilihan A-E, Kunci Jawaban (A/B/C/D/E), serta **Pembahasan HOTS**.</li>
+                      <li>Tambahkan **Sub Topik / Materi Ujian** (misal: <em>Perubahan Sosial</em>, <em>Globalisasi</em>) agar mudah difilter.</li>
+                      <li>Anda juga dapat melampirkan **Gambar / Tabel** pada pertanyaan atau pilihan jawaban.</li>
+                      <li>Pastikan tombol status soal bertanda <strong className="text-emerald-600">Aktif</strong> agar dimuat dalam lembar ujian siswa.</li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* LANGKAH 3 */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-indigo-600 text-white font-black text-xs px-3 py-1 rounded-xl shadow-xs shrink-0">
+                        LANGKAH 3
+                      </span>
+                      <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                        <Users className="w-4 h-4 text-indigo-600" />
+                        Kelola Data Peserta Ujian (Siswa & Guru)
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('students')}
+                      className="inline-flex items-center gap-1.5 text-xs font-extrabold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl border border-indigo-200 transition-all self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Buka User Siswa & Guru</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                    <p className="font-semibold text-slate-800">
+                      Pastikan akun dan kredensial siswa yang akan mengikuti ujian sudah terdaftar dalam sistem:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 pl-1 text-slate-700">
+                      <li>Masuk ke menu <strong className="text-indigo-700">User Siswa & Guru</strong>.</li>
+                      <li>Tambahkan data siswa (Nomor Peserta/NIS, Nama Lengkap, Kelas, Ruang, dan Password/PIN).</li>
+                      <li>Gunakan tombol **Import Excel Data Siswa** untuk memasukkan puluhan/ratusan siswa sekaligus.</li>
+                      <li>Anda juga dapat menambahkan akun **Guru Pengawas / Admin** lain jika diperlukan.</li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* LANGKAH 4 */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-orange-600 text-white font-black text-xs px-3 py-1 rounded-xl shadow-xs shrink-0">
+                        LANGKAH 4
+                      </span>
+                      <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-orange-600" />
+                        Atur Jadwal, Parameter & Ketentuan Ujian
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('schedule')}
+                      className="inline-flex items-center gap-1.5 text-xs font-extrabold text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-xl border border-orange-200 transition-all self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Buka Setting Jadwal Ujian</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                    <p className="font-semibold text-slate-800">
+                      Konfigurasi aturan dan batas durasi pengerjaan sebelum ujian diaktifkan:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 pl-1 text-slate-700">
+                      <li>Masuk ke menu <strong className="text-orange-700">Setting Jadwal Ujian</strong>.</li>
+                      <li>Tentukan **Durasi Ujian** (misal: 60 menit) dan **Nilai KKM** (misal: 75).</li>
+                      <li>Atur **Jumlah Soal Tampil** (isi `0` jika ingin menampilkan seluruh soal di Bank Soal).</li>
+                      <li>Aktifkan Opsi **Acak Urutan Soal** dan **Acak Pilihan Jawaban** untuk meminimalkan penyontekan.</li>
+                      <li>Tentukan **Waktu Mulai Ujian** & **Waktu Selesai Ujian**, serta **Toleransi Keterlambatan**.</li>
+                      <li>Aktifkan **Proteksi Anti-Curang** (Peringatan saat siswa pindah tab / keluar layar penuh).</li>
+                      <li>Ubah Status Sesi Ujian dari <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">DRAFT</span> menjadi <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">AKTIF</span>.</li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* LANGKAH 5 */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-amber-500 text-slate-950 font-black text-xs px-3 py-1 rounded-xl shadow-xs shrink-0">
+                        LANGKAH 5
+                      </span>
+                      <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                        <Key className="w-4 h-4 text-amber-500" />
+                        Rilis Token Ujian Rahasia
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('token')}
+                      className="inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-800 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl border border-amber-200 transition-all self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Buka Token Ujian</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                    <p className="font-semibold text-slate-800">
+                      Siswa memerlukan kode token untuk membuka dan memulai lembar soal ujian:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 pl-1 text-slate-700">
+                      <li>Masuk ke menu <strong className="text-amber-700">Token Ujian</strong>.</li>
+                      <li>Klik **Rilis / Acak Token Baru** untuk menggenerasi 6 kode rahasia acak (Contoh: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-amber-700 font-bold">{currentToken}</code>).</li>
+                      <li>Tuliskan kode token tersebut di papan tulis atau LCD ruang ujian ketika siswa sudah siap.</li>
+                      <li>Token dapat diperbarui secara acak jika sesi ujian ingin diatur secara bertahap.</li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* LANGKAH 6 */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-emerald-600 text-white font-black text-xs px-3 py-1 rounded-xl shadow-xs shrink-0">
+                        LANGKAH 6
+                      </span>
+                      <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                        <Monitor className="w-4 h-4 text-emerald-600" />
+                        Pelaksanaan Ujian, Pengunduhan File Jawaban (.CBT) & Upload ke Google Drive
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('rekap')}
+                      className="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-all self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Buka Live Monitor</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                    <p className="font-semibold text-slate-800">
+                      Alur pelaksanaan ujian, pengumpulan file jawaban siswa, hingga pengunggahan ke Google Drive:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1.5 pl-1 text-slate-700">
+                      <li>Buka menu <strong className="text-emerald-700">Rekap & Live Monitor</strong> untuk memantau status pengerjaan siswa secara langsung (login, sisa waktu, dan peringatan pindah tab).</li>
+                      <li>Ketika siswa menekan tombol <strong className="text-emerald-700">&quot;Selesai Ujian&quot;</strong>, sistem akan secara otomatis mengunduh **File Jawaban Terenkripsi (.CBT)** ke perangkat/HP siswa.</li>
+                      <li>Pada halaman hasil akhir, siswa diminta mengklik tombol <strong className="text-emerald-700">&quot;Upload Hasil Jawaban (Google Drive)&quot;</strong> untuk menuju ke **Link Google Drive / Form** yang telah dikonfigurasi Guru pada menu *Mata Pelajaran*.</li>
+                      <li>Siswa mengunggah file `<span className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-800">Jawaban_CBT.cbt</span>` yang telah terunduh ke folder Drive tersebut sebagai berkas bukti resmi pengerjaan.</li>
+                      <li>Jika terjadi kendala (misal HP mati atau keluar browser), Guru dapat melakukan **Reset Login Siswa** dari menu *User Siswa & Guru* agar siswa bisa melanjutkan.</li>
+                    </ol>
+                  </div>
+                </div>
+
+                {/* LANGKAH 7 */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-all space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-purple-600 text-white font-black text-xs px-3 py-1 rounded-xl shadow-xs shrink-0">
+                        LANGKAH 7
+                      </span>
+                      <h4 className="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                        <FileCheck className="w-4 h-4 text-purple-600" />
+                        Pengumpulan File .CBT, Dekripsi Nilai, Rekap & Analisis Soal
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('rekap')}
+                      className="inline-flex items-center gap-1.5 text-xs font-extrabold text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200 transition-all self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Buka Rekap & Analisis</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
+                    <p className="font-semibold text-slate-800">
+                      Pengolahan nilai akhir dan analisis statistik butir soal:
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1.5 pl-1 text-slate-700">
+                      <li>Guru membuka folder Google Drive tempat siswa mengunggah file jawaban <code className="font-mono text-purple-700 font-bold">.CBT</code>.</li>
+                      <li>Masuk ke menu <strong className="text-purple-700">Rekapitulasi Nilai</strong> di Portal Guru, lalu klik tombol **&quot;Unggah & Dekripsi (.CBT)&quot;** untuk memuat seluruh file jawaban siswa secara otomatis.</li>
+                      <li>Sistem dekripsi akan menghitung skor, persentase kelulusan KKM, serta memperbarui tabel rekapitulasi secara akurat.</li>
+                      <li>Unduh **File Rekap Excel (.xlsx)** untuk kearsipan nilai atau cetak **Laporan PDF Resmi** per kelas.</li>
+                      <li>Buka tab **Analisis Butir Soal** untuk mengevaluasi Tingkat Kesukaran (Mudah/Sedang/Sukar), Daya Beda, serta Efektivitas Pengecoh tiap butir soal.</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ready Checklist Banner */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl shrink-0">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-emerald-900 text-sm">
+                      Sistem CBT Siap Digunakan!
+                    </h4>
+                    <p className="text-xs text-emerald-700 leading-snug">
+                      Apabila Langkah 1 s/d 5 telah dikonfigurasi, ujian siap dilaksanakan oleh siswa.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('schedule')}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all shrink-0 flex items-center gap-2 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4 fill-current" />
+                  <span>Cek Status Ujian Sekarang</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* TAB 0: MATA PELAJARAN */}
           {activeTab === 'mapel' && (
             <div className="p-4 sm:p-6 max-w-6xl mx-auto w-full space-y-6">
