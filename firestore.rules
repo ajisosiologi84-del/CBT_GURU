@@ -1,24 +1,89 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write on cbt_config for exam sync
-    match /cbt_config/{docId} {
-      allow read, write: if true;
-    }
-    
-    // Allow student results reading and writing
-    match /student_results/{resultId} {
-      allow read, write: if true;
-    }
-    
-    // Allow teacher accounts access
-    match /teacher_accounts/{teacherId} {
-      allow read, write: if true;
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Default match
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Schema Validation Helpers
+    function isValidConfig(data) {
+      return data is map &&
+        data.schoolName is string && data.schoolName.size() <= 300 &&
+        data.examTitle is string && data.examTitle.size() <= 300 &&
+        data.questions is list && data.questions.size() <= 1000 &&
+        data.students is list && data.students.size() <= 5000;
+    }
+
+    function isValidStudentResult(data) {
+      return data is map &&
+        data.id is string && data.id.size() <= 128 &&
+        data.studentInfo is map &&
+        data.score is number;
+    }
+
+    function isValidTeacher(data) {
+      return data is map &&
+        data.id is string && data.id.size() <= 128 &&
+        data.username is string && data.username.size() <= 100 &&
+        data.name is string && data.name.size() <= 200;
+    }
+
+    // CBT Configuration
+    match /cbt_config/{configId} {
+      allow read: if isValidId(configId);
+      allow create, update: if isValidId(configId) && isValidConfig(incoming());
+      allow delete: if isValidId(configId);
+    }
+
+    match /cbt_configs/{configId} {
+      allow read: if isValidId(configId);
+      allow create, update: if isValidId(configId) && isValidConfig(incoming());
+      allow delete: if isValidId(configId);
+    }
+
+    // Student Results
+    match /student_results/{resultId} {
+      allow read: if isValidId(resultId);
+      allow create, update: if isValidId(resultId) && isValidStudentResult(incoming());
+      allow delete: if isValidId(resultId);
+    }
+
+    match /cbt_results/{resultId} {
+      allow read: if isValidId(resultId);
+      allow create, update: if isValidId(resultId) && isValidStudentResult(incoming());
+      allow delete: if isValidId(resultId);
+    }
+
+    // Teacher Accounts
+    match /teacher_accounts/{teacherId} {
+      allow read: if isValidId(teacherId);
+      allow create, update: if isValidId(teacherId) && isValidTeacher(incoming());
+      allow delete: if isValidId(teacherId);
+    }
+
+    match /cbt_teachers/{teacherId} {
+      allow read: if isValidId(teacherId);
+      allow create, update: if isValidId(teacherId) && isValidTeacher(incoming());
+      allow delete: if isValidId(teacherId);
+    }
+
+    // Student Master Data
+    match /cbt_students/{studentId} {
+      allow read: if isValidId(studentId);
+      allow create, update: if isValidId(studentId);
+      allow delete: if isValidId(studentId);
+    }
+
+    // Default deny for unmapped collections
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

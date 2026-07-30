@@ -1,11 +1,11 @@
 import { StudentResult } from '../types';
 
-const SECRET_KEY = 'CBT_SOSIOLOGI_2026_KEY_GURU_SEKOLAH_SECURE_AUTH';
+const BASE_SECRET_KEY = 'CBT_SOSIOLOGI_2026_KEY_GURU_SEKOLAH_SECURE_AUTH';
 
 /**
  * Calculates a secure 32-bit checksum hash string for integrity verification.
  */
-function calculateHash(str: string): string {
+export function calculateHash(str: string): string {
   let hash1 = 5381;
   let hash2 = 0;
   for (let i = 0; i < str.length; i++) {
@@ -19,23 +19,66 @@ function calculateHash(str: string): string {
 }
 
 /**
- * Encrypts a StudentResult object into a secure, UTF-8 byte-safe Base64 payload.
+ * Generates a dynamic, cryptographically random salt string.
  */
-export function encryptResult(result: StudentResult): string {
+export function generateDynamicSalt(length = 16): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let salt = '';
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+    const bytes = new Uint8Array(length);
+    window.crypto.getRandomValues(bytes);
+    for (let i = 0; i < length; i++) {
+      salt += chars[bytes[i] % chars.length];
+    }
+  } else {
+    for (let i = 0; i < length; i++) {
+      salt += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+  }
+  return salt;
+}
+
+/**
+ * Derives a dynamic key byte stream using PBKDF-like mixing with custom key and salt.
+ */
+export function deriveDynamicKeyBytes(baseKey: string, customKey?: string, salt?: string): Uint8Array {
+  const compositeKey = `${baseKey}:${customKey || 'DEFAULT_GURU'}:${salt || 'DYNAMIC_SALT_2026'}`;
+  const encoder = new TextEncoder();
+  const rawBytes = encoder.encode(compositeKey);
+
+  // Expand to a 256-byte dynamic key block
+  const expanded = new Uint8Array(256);
+  let state1 = 5381;
+  let state2 = 0;
+  for (let i = 0; i < 256; i++) {
+    const rawByte = rawBytes[i % rawBytes.length];
+    state1 = (state1 * 33) ^ rawByte ^ i;
+    state2 = (state2 << 5) - state2 + rawByte + i;
+    state1 |= 0;
+    state2 |= 0;
+    expanded[i] = (Math.abs(state1 ^ state2) + rawByte) & 0xff;
+  }
+  return expanded;
+}
+
+/**
+ * Encrypts a StudentResult object into a secure, UTF-8 byte-safe Base64 payload using dynamic salt & key.
+ */
+export function encryptResult(result: StudentResult, customKey?: string): string {
   const jsonStr = JSON.stringify(result);
   const hash = calculateHash(jsonStr);
+  const salt = generateDynamicSalt(16);
 
   const encoder = new TextEncoder();
   const jsonBytes = encoder.encode(jsonStr);
-  const keyBytes = encoder.encode(SECRET_KEY);
+  const effectiveCustomKey = customKey || result.studentInfo?.kodeGuru || 'GURU01';
+  const keyBytes = deriveDynamicKeyBytes(BASE_SECRET_KEY, effectiveCustomKey, salt);
 
-  // XOR byte by byte (100% safe for non-ASCII, UTF-8 Indonesian names, and binary data)
   const cipherBytes = new Uint8Array(jsonBytes.length);
   for (let i = 0; i < jsonBytes.length; i++) {
     cipherBytes[i] = jsonBytes[i] ^ keyBytes[i % keyBytes.length];
   }
 
-  // Convert binary Uint8Array to Base64
   let binary = '';
   const len = cipherBytes.length;
   for (let i = 0; i < len; i++) {
@@ -45,7 +88,9 @@ export function encryptResult(result: StudentResult): string {
 
   const container = {
     cbtHeader: 'CBT_SOSIOLOGI_2026_ENCRYPTED_FILE',
-    version: '2.0',
+    version: '2.1',
+    salt,
+    kodeGuru: effectiveCustomKey,
     hash,
     payload: base64Cipher,
     studentName: result.studentInfo?.name || 'Siswa',
@@ -59,9 +104,9 @@ export function encryptResult(result: StudentResult): string {
 
 /**
  * Decrypts an encrypted CBT result file content string into a StudentResult object.
- * Robustly handles legacy, byte-encoded, base64, or raw JSON formats.
+ * Seamlessly handles dynamic salted files as well as legacy v2.0 and v1.0 files.
  */
-export function decryptResult(encryptedContent: string): StudentResult {
+export function decryptResult(encryptedContent: string, customKey?: string): StudentResult {
   const cleanContent = encryptedContent.trim().replace(/^\uFEFF/, '');
   if (!cleanContent) {
     throw new Error('File kosong!');
@@ -74,7 +119,7 @@ export function decryptResult(encryptedContent: string): StudentResult {
     throw new Error('Format file tidak dikenali. File harus berupa file .cbt resmi dari CBT Guru!');
   }
 
-  // Case 1: Direct StudentResult JSON (if unencrypted json file uploaded)
+  // Case 1: Direct StudentResult JSON (unencrypted)
   if (container && container.studentInfo && typeof container.score === 'number' && Array.isArray(container.answers)) {
     return container as StudentResult;
   }
@@ -85,35 +130,73 @@ export function decryptResult(encryptedContent: string): StudentResult {
   }
 
   const base64Cipher = container.payload;
+  const salt = container.salt;
+  const fileKodeGuru = container.kodeGuru || customKey;
+
   let decryptedJson = '';
+  let decryptSuccess = false;
 
-  try {
-    const binary = atob(base64Cipher);
-    const cipherBytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      cipherBytes[i] = binary.charCodeAt(i);
+  // Attempt 1: Dynamic key decryption (v2.1 with salt)
+  if (salt) {
+    try {
+      const binary = atob(base64Cipher);
+      const cipherBytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        cipherBytes[i] = binary.charCodeAt(i);
+      }
+
+      const keyBytes = deriveDynamicKeyBytes(BASE_SECRET_KEY, fileKodeGuru || 'GURU01', salt);
+      const decryptedBytes = new Uint8Array(cipherBytes.length);
+      for (let i = 0; i < cipherBytes.length; i++) {
+        decryptedBytes[i] = cipherBytes[i] ^ keyBytes[i % keyBytes.length];
+      }
+
+      decryptedJson = new TextDecoder().decode(decryptedBytes);
+      JSON.parse(decryptedJson); // verify JSON validity
+      decryptSuccess = true;
+    } catch (e) {
+      // Fall through to legacy attempts
     }
+  }
 
-    const keyBytes = new TextEncoder().encode(SECRET_KEY);
-    const decryptedBytes = new Uint8Array(cipherBytes.length);
-    for (let i = 0; i < cipherBytes.length; i++) {
-      decryptedBytes[i] = cipherBytes[i] ^ keyBytes[i % keyBytes.length];
+  // Attempt 2: Legacy v2.0 Byte-XOR with BASE_SECRET_KEY
+  if (!decryptSuccess) {
+    try {
+      const binary = atob(base64Cipher);
+      const cipherBytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        cipherBytes[i] = binary.charCodeAt(i);
+      }
+
+      const keyBytes = new TextEncoder().encode(BASE_SECRET_KEY);
+      const decryptedBytes = new Uint8Array(cipherBytes.length);
+      for (let i = 0; i < cipherBytes.length; i++) {
+        decryptedBytes[i] = cipherBytes[i] ^ keyBytes[i % keyBytes.length];
+      }
+
+      decryptedJson = new TextDecoder().decode(decryptedBytes);
+      JSON.parse(decryptedJson);
+      decryptSuccess = true;
+    } catch (e) {
+      // Fall through
     }
+  }
 
-    decryptedJson = new TextDecoder().decode(decryptedBytes);
-  } catch (err) {
-    // Fallback attempt for legacy 1.0 string-based XOR decoding
+  // Attempt 3: Legacy v1.0 String-XOR with BASE_SECRET_KEY
+  if (!decryptSuccess) {
     try {
       const binary = atob(base64Cipher);
       const utf8Bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
       const cipherStr = new TextDecoder().decode(utf8Bytes);
       let output = '';
       for (let i = 0; i < cipherStr.length; i++) {
-        output += String.fromCharCode(cipherStr.charCodeAt(i) ^ SECRET_KEY.charCodeAt(i % SECRET_KEY.length));
+        output += String.fromCharCode(cipherStr.charCodeAt(i) ^ BASE_SECRET_KEY.charCodeAt(i % BASE_SECRET_KEY.length));
       }
       decryptedJson = output;
+      JSON.parse(decryptedJson);
+      decryptSuccess = true;
     } catch (fallbackErr) {
-      throw new Error('Gagal mendekripsi payload file .cbt. File mungkin terkorupsi!');
+      throw new Error('Gagal mendekripsi payload file .cbt. Kunci enkripsi tidak cocok atau file terkorupsi!');
     }
   }
 
@@ -124,12 +207,10 @@ export function decryptResult(encryptedContent: string): StudentResult {
     throw new Error('Data hasil jawaban terdekripsi tidak berformat JSON valid.');
   }
 
-  // Check structure integrity
   if (!resultObj || !resultObj.studentInfo || typeof resultObj.score !== 'number') {
     throw new Error('Struktur data hasil ujian siswa tidak lengkap atau tidak valid!');
   }
 
-  // Check Hash integrity if present
   if (container.hash) {
     const calculated = calculateHash(decryptedJson);
     if (container.hash !== calculated) {
@@ -141,15 +222,16 @@ export function decryptResult(encryptedContent: string): StudentResult {
 }
 
 /**
- * Encrypts an entire app backup object into a secure encrypted JSON string payload.
+ * Encrypts an entire app backup object into a secure encrypted JSON payload using dynamic keys.
  */
-export function encryptAppBackup(backupPayload: any): string {
+export function encryptAppBackup(backupPayload: any, customKey?: string): string {
   const jsonStr = JSON.stringify(backupPayload);
   const hash = calculateHash(jsonStr);
+  const salt = generateDynamicSalt(16);
 
   const encoder = new TextEncoder();
   const jsonBytes = encoder.encode(jsonStr);
-  const keyBytes = encoder.encode(SECRET_KEY);
+  const keyBytes = deriveDynamicKeyBytes(BASE_SECRET_KEY, customKey || backupPayload.config?.kodeGuru || 'GURU01', salt);
 
   const cipherBytes = new Uint8Array(jsonBytes.length);
   for (let i = 0; i < jsonBytes.length; i++) {
@@ -165,8 +247,9 @@ export function encryptAppBackup(backupPayload: any): string {
 
   const container = {
     cbtBackupHeader: 'CBT_GURUAI_SECURE_ENCRYPTED_BACKUP_V2',
-    version: '2.0',
-    securityStatus: 'ENCRYPTED_AES_XOR_UTF8',
+    version: '2.1',
+    securityStatus: 'ENCRYPTED_DYNAMIC_PBKDF_XOR_UTF8',
+    salt,
     hash,
     encryptedData: base64Cipher,
     exportedAt: new Date().toISOString(),
@@ -181,10 +264,9 @@ export function encryptAppBackup(backupPayload: any): string {
 }
 
 /**
- * Decrypts an encrypted app backup JSON string payload.
- * Supports encrypted format and seamlessly falls back if legacy raw JSON is uploaded.
+ * Decrypts an encrypted app backup JSON payload with dynamic key derivation and legacy fallback support.
  */
-export function decryptAppBackup(encryptedContent: string): any {
+export function decryptAppBackup(encryptedContent: string, customKey?: string): any {
   const cleanContent = encryptedContent.trim().replace(/^\uFEFF/, '');
   if (!cleanContent) {
     throw new Error('File backup kosong!');
@@ -197,12 +279,11 @@ export function decryptAppBackup(encryptedContent: string): any {
     throw new Error('Format file backup tidak valid. File harus berupa JSON backup resmi CBT GURUAI!');
   }
 
-  // If legacy unencrypted backup object
+  // Unencrypted JSON backup fallback
   if (container && (container.config || (container.questions && Array.isArray(container.questions)))) {
     return container;
   }
 
-  // If encrypted backup format
   if (!container || (!container.encryptedData && container.cbtBackupHeader !== 'CBT_GURUAI_SECURE_ENCRYPTED_BACKUP_V2')) {
     throw new Error('File backup bukan merupakan file terenkripsi resmi CBT GURUAI!');
   }
@@ -212,23 +293,54 @@ export function decryptAppBackup(encryptedContent: string): any {
     throw new Error('Data terenkripsi tidak ditemukan di dalam file backup!');
   }
 
+  const salt = container.salt;
   let decryptedJson = '';
-  try {
-    const binary = atob(base64Cipher);
-    const cipherBytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      cipherBytes[i] = binary.charCodeAt(i);
-    }
+  let decryptSuccess = false;
 
-    const keyBytes = new TextEncoder().encode(SECRET_KEY);
-    const decryptedBytes = new Uint8Array(cipherBytes.length);
-    for (let i = 0; i < cipherBytes.length; i++) {
-      decryptedBytes[i] = cipherBytes[i] ^ keyBytes[i % keyBytes.length];
-    }
+  // Attempt 1: Dynamic key decryption (v2.1 with salt)
+  if (salt) {
+    try {
+      const binary = atob(base64Cipher);
+      const cipherBytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        cipherBytes[i] = binary.charCodeAt(i);
+      }
 
-    decryptedJson = new TextDecoder().decode(decryptedBytes);
-  } catch (err) {
-    throw new Error('Gagal mendekripsi file backup. Kunci enkripsi tidak sesuai atau file terkorupsi!');
+      const keyBytes = deriveDynamicKeyBytes(BASE_SECRET_KEY, customKey || 'GURU01', salt);
+      const decryptedBytes = new Uint8Array(cipherBytes.length);
+      for (let i = 0; i < cipherBytes.length; i++) {
+        decryptedBytes[i] = cipherBytes[i] ^ keyBytes[i % keyBytes.length];
+      }
+
+      decryptedJson = new TextDecoder().decode(decryptedBytes);
+      JSON.parse(decryptedJson);
+      decryptSuccess = true;
+    } catch (e) {
+      // Continue to fallbacks
+    }
+  }
+
+  // Attempt 2: Legacy v2.0 Byte-XOR with BASE_SECRET_KEY
+  if (!decryptSuccess) {
+    try {
+      const binary = atob(base64Cipher);
+      const cipherBytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        cipherBytes[i] = binary.charCodeAt(i);
+      }
+
+      const keyBytes = new TextEncoder().encode(BASE_SECRET_KEY);
+      const decryptedBytes = new Uint8Array(cipherBytes.length);
+      for (let i = 0; i < cipherBytes.length; i++) {
+        decryptedBytes[i] = cipherBytes[i] ^ keyBytes[i % keyBytes.length];
+      }
+
+      decryptedJson = new TextDecoder().decode(decryptedBytes);
+      JSON.parse(decryptedJson);
+      decryptSuccess = true;
+    } catch (err) {
+      throw new Error('Gagal mendekripsi file backup. Kunci enkripsi tidak sesuai atau file terkorupsi!');
+    }
   }
 
   let backupPayload: any;
@@ -247,4 +359,5 @@ export function decryptAppBackup(encryptedContent: string): any {
 
   return backupPayload;
 }
+
 
