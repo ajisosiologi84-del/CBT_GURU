@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AppConfig, Question, Option, ViewState, StudentInfo, StudentResult, CheatingLog } from './types';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { AppConfig, Question, Option, ViewState, StudentInfo, StudentResult, CheatingLog, BroadcastAlert } from './types';
 import { defaultQuestions } from './data/defaultQuestions';
 import { defaultStudents } from './data/defaultStudents';
 import { encryptResult } from './utils/crypto';
@@ -241,6 +241,8 @@ export default function App() {
   });
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const [warningMsg, setWarningMsg] = useState<string | null>(null);
+  const [activeBroadcastAlert, setActiveBroadcastAlert] = useState<BroadcastAlert | null>(null);
+  const lastBroadcastAlertIdRef = useRef<string | null>(null);
 
   // Admin Question Modal State
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
@@ -362,15 +364,25 @@ export default function App() {
     setViewState('test');
   };
 
-  // Timer Countdown Effect
+  // Timer Countdown Effect & Schedule End Time Check (Point 1 - Opsi C)
   useEffect(() => {
     if (viewState !== 'test') return;
 
     const timer = setInterval(() => {
+      // Check if schedule end time is reached
+      if (config.examSchedule?.endTime) {
+        const endTimeMs = new Date(config.examSchedule.endTime).getTime();
+        if (!isNaN(endTimeMs) && Date.now() >= endTimeMs) {
+          clearInterval(timer);
+          triggerAutoSubmit('⏰ Jam Jadwal Selesai Ujian telah berakhir (Sesuai Batas Waktu Ujian). Seluruh jawaban Anda otomatis dikirim.');
+          return;
+        }
+      }
+
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          triggerAutoSubmit('Waktu habis! Jawaban Anda otomatis tersimpan.');
+          triggerAutoSubmit('⏰ Waktu Pengerjaan Ujian telah habis! Seluruh jawaban Anda otomatis tersimpan.');
           return 0;
         }
         return prev - 1;
@@ -378,7 +390,47 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [viewState]);
+  }, [viewState, config.examSchedule?.endTime]);
+
+  // Real-time Exam Session Control (Point 1 - Opsi A) & Broadcast Warning Listener (Point 2)
+  useEffect(() => {
+    if (viewState !== 'test') return;
+
+    // 1. Force Stop Check: Check if sessionStatus is CLOSED or FORCE_STOPPED by Proktor
+    const status = config.examSchedule?.sessionStatus;
+    if (status === 'CLOSED' || status === 'FORCE_STOPPED') {
+      triggerAutoSubmit('🚨 UJIAN TELAH DIHENTIKAN OLEH PROKTOR / ADMIN! Seluruh jawaban Anda telah tersimpan secara otomatis.');
+      return;
+    }
+
+    // 2. Individual Student Deactivation Check
+    if (studentInfo?.noPeserta && Array.isArray(config.students)) {
+      const studentRec = config.students.find(
+        (s) => s.nis.toLowerCase() === studentInfo.noPeserta.toLowerCase() || s.id === studentInfo.noPeserta
+      );
+      if (studentRec && studentRec.isActive === false) {
+        triggerAutoSubmit('🚨 Akses Ujian Anda telah dinonaktifkan/diberhentikan oleh Pengawas Ujian.');
+        return;
+      }
+    }
+
+    // 3. Broadcast Proktor Alert Message Listener (Point 2)
+    if (config.broadcastAlert && config.broadcastAlert.id !== lastBroadcastAlertIdRef.current) {
+      const alertData = config.broadcastAlert;
+      const targetNis = alertData.targetStudentNis?.trim();
+
+      const isApplicable =
+        !targetNis ||
+        targetNis === 'ALL' ||
+        targetNis.toLowerCase() === studentInfo.noPeserta.toLowerCase();
+
+      if (isApplicable) {
+        lastBroadcastAlertIdRef.current = alertData.id;
+        playWarningSound();
+        setActiveBroadcastAlert(alertData);
+      }
+    }
+  }, [config, viewState, studentInfo.noPeserta]);
 
   // Security & Anti-Cheat Handlers (Mobile & Desktop Compatible)
   const playWarningSound = () => {
@@ -762,6 +814,10 @@ export default function App() {
           subTitle={config.subTitle}
           studentName={studentInfo.name}
           noPeserta={studentInfo.noPeserta}
+          warnings={warnings}
+          maxWarnings={maxWarnings}
+          broadcastAlert={activeBroadcastAlert}
+          onDismissBroadcastAlert={() => setActiveBroadcastAlert(null)}
           onAnswer={handleAnswerOption}
           onToggleRagu={handleToggleRagu}
           onSelectQuestion={(idx) => setCurrentIndex(idx)}

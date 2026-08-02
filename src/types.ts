@@ -53,10 +53,20 @@ export interface CheatingLog {
   details?: string;
 }
 
+export interface BroadcastAlert {
+  id: string;
+  message: string;
+  targetStudentNis?: string; // empty / 'ALL' = broadcast to all students
+  targetStudentName?: string;
+  sender?: string;
+  createdAt: string;
+  type?: 'warning' | 'info' | 'urgent';
+}
+
 export interface ExamScheduleConfig {
   startTime?: string; // e.g. "2026-07-29T08:00"
   endTime?: string; // e.g. "2026-07-29T12:00"
-  sessionStatus?: 'DRAFT' | 'ACTIVE' | 'CLOSED';
+  sessionStatus?: 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'FORCE_STOPPED';
   lateToleranceMinutes?: number;
   allowReviewAfterFinish?: boolean;
   showScoreImmediately?: boolean;
@@ -87,6 +97,7 @@ export interface AppConfig {
   driveUploadUrl?: string; // Link Google Drive untuk Upload Hasil Jawaban Siswa
   youtubeGuideUrl?: string; // Link Video YouTube Panduan Guru (dikeloa Admin)
   examSchedule?: ExamScheduleConfig; // Detail Pengaturan Jadwal & Ketentuan Ujian
+  broadcastAlert?: BroadcastAlert | null; // Pesan Peringatan Broadcast Proktor Real-time
 }
 
 export type ViewState = 'login' | 'admin' | 'pre-test' | 'test' | 'result' | 'review';

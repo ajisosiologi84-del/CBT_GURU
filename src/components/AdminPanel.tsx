@@ -69,6 +69,10 @@ import {
   Video,
   Play,
   ExternalLink,
+  Megaphone,
+  Send,
+  Radio,
+  AlertOctagon,
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -146,6 +150,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showScoreImmediately, setShowScoreImmediately] = useState<boolean>(config.examSchedule?.showScoreImmediately !== false);
   const [strictAntiCheating, setStrictAntiCheating] = useState<boolean>(config.examSchedule?.strictAntiCheating !== false);
   const [maxCheatingAllowed, setMaxCheatingAllowed] = useState<number>(config.examSchedule?.maxCheatingAllowed || 3);
+
+  // Broadcast Warning Proktor State (Point 2)
+  const [broadcastTargetNis, setBroadcastTargetNis] = useState<string>('ALL');
+  const [broadcastMessage, setBroadcastMessage] = useState<string>('');
 
   // Analisis Butir Soal Filter State
   const [analisisSearch, setAnalisisSearch] = useState('');
@@ -557,6 +565,78 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       },
     });
     showAlert('Semua Pengaturan Jadwal, Durasi, KKM, & Ketentuan Ujian Berhasil Disimpan!');
+  };
+
+  // Real-time Broadcast Warning Handler (Point 2)
+  const handleSendBroadcastWarning = (customMsg?: string) => {
+    const msg = customMsg || broadcastMessage.trim();
+    if (!msg) {
+      showAlert('Silakan tulis atau pilih pesan peringatan yang ingin dikirimkan ke peserta!');
+      return;
+    }
+
+    const targetStudentName =
+      broadcastTargetNis === 'ALL'
+        ? 'Semua Peserta Ujian'
+        : config.students.find((s) => s.nis === broadcastTargetNis)?.nama || broadcastTargetNis;
+
+    const newAlert = {
+      id: Date.now().toString(),
+      message: msg,
+      targetStudentNis: broadcastTargetNis,
+      targetStudentName,
+      sender: 'Proktor Ujian',
+      createdAt: new Date().toLocaleTimeString('id-ID'),
+      type: 'warning' as const,
+    };
+
+    const updatedConfig: AppConfig = {
+      ...config,
+      broadcastAlert: newAlert,
+      updatedAt: new Date().toISOString(),
+    };
+
+    onSaveConfig(updatedConfig);
+    setBroadcastMessage('');
+    showAlert(`📢 Pesan peringatan real-time berhasil dikirim ke: ${targetStudentName}!`);
+  };
+
+  // Real-time Force Stop Whole Exam Handler (Point 1 - Opsi A)
+  const handleForceStopExamRealtime = () => {
+    showConfirm(
+      '🚨 HENTIKAN SELURUH UJIAN SEKARANG (FORCE STOP)',
+      'Apakah Anda YAKIN ingin MENGHENTIKAN PAKSA seluruh ujian online peserta yang sedang berlangsung secara real-time?\n\nStatus sesi akan diubah menjadi CLOSED dan seluruh jawaban siswa yang sedang dikerjakan akan langsung ter-submit otomatis!',
+      () => {
+        setSessionStatus('CLOSED');
+        const updatedConfig: AppConfig = {
+          ...config,
+          examSchedule: {
+            ...config.examSchedule,
+            startTime: scheduleStartTime,
+            endTime: scheduleEndTime,
+            sessionStatus: 'CLOSED',
+            lateToleranceMinutes: lateTolerance,
+            allowReviewAfterFinish,
+            showScoreImmediately,
+            strictAntiCheating,
+            maxCheatingAllowed,
+          },
+          broadcastAlert: {
+            id: Date.now().toString(),
+            message: '🚨 PEMBERITAHUAN PENGAWAS: Seluruh sesi ujian telah resmi DIHENTIKAN oleh Proktor. Seluruh jawaban Anda telah tersimpan secara otomatis.',
+            targetStudentNis: 'ALL',
+            sender: 'Proktor Ujian (Sistem)',
+            createdAt: new Date().toLocaleTimeString('id-ID'),
+            type: 'urgent',
+          },
+          updatedAt: new Date().toISOString(),
+        };
+
+        onSaveConfig(updatedConfig);
+        showAlert('🚨 Ujian berhasil dihentikan paksa secara real-time! Sesi diubah ke CLOSED.');
+      },
+      true
+    );
   };
 
   // Mapel Handlers
@@ -4029,6 +4109,153 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <div className="text-[10px] opacity-80 font-medium">Ujian telah berakhir, tidak dapat diakses</div>
                     </div>
                   </button>
+                </div>
+
+                {/* Tombol Darurat Force Stop Real-time (Point 1 - Opsi A) */}
+                <div className="mt-4 pt-4 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3 bg-red-50 p-4 rounded-2xl border-2 border-red-200">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-red-600 text-white rounded-xl shadow-md shrink-0">
+                      <ShieldAlert className="w-5 h-5 animate-pulse" />
+                    </div>
+                    <div>
+                      <h5 className="font-extrabold text-xs text-red-900 uppercase tracking-wider">
+                        Kendali Pengawas Real-Time (Point 1 - Opsi A)
+                      </h5>
+                      <p className="text-[11px] text-red-700 font-medium">
+                        Hentikan paksa seluruh ujian online peserta secara langsung saat ini juga. Jawaban dikirim otomatis.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleForceStopExamRealtime}
+                    className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-black px-5 py-2.5 rounded-xl text-xs transition shadow-lg flex items-center gap-2 shrink-0 cursor-pointer active:scale-95"
+                  >
+                    🚨 HENTIKAN SELURUH UJIAN SEKARANG (FORCE STOP)
+                  </button>
+                </div>
+              </div>
+
+              {/* PUSAT BROADCAST PERINGATAN PROKTOR REAL-TIME (Point 2) */}
+              <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 border-2 border-amber-400 p-6 rounded-3xl space-y-5 relative overflow-hidden">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-amber-500 text-slate-950 rounded-2xl shadow-lg shadow-amber-200 shrink-0">
+                      <Megaphone className="w-6 h-6 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-amber-300">
+                          Real-Time Broadcast
+                        </span>
+                        <span className="flex h-2 w-2 relative">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-700">Terhubung Live</span>
+                      </div>
+                      <h4 className="font-extrabold text-base sm:text-lg text-slate-900 mt-0.5">
+                        Pusat Broadcast & Peringatan Proktor ke Peserta Ujian (Point 2)
+                      </h4>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                  Kirimkan pesan teguran, instruksi waktu, atau peringatan resmi dari Proktor secara langsung ke layar ujian peserta saat ujian berlangsung. Pesan akan muncul dalam bentuk <b>pop-up modal peringatan bersuara</b> di device siswa.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Target Selection */}
+                  <div className="md:col-span-1 bg-white p-4 rounded-2xl border border-amber-200 shadow-xs space-y-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-amber-600" /> Target Penerima Pesan
+                    </label>
+                    <select
+                      value={broadcastTargetNis}
+                      onChange={(e) => setBroadcastTargetNis(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-xl p-2.5 focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="ALL">📢 SEMUA PESERTA UJIAN (Broadcast General)</option>
+                      {config.students.map((s) => (
+                        <option key={s.id || s.nis} value={s.nis}>
+                          👤 {s.nama} ({s.kelas} - NIS: {s.nis})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-slate-500">
+                      Pilih <b>Semua Peserta</b> atau pilih <b>Siswa Spesifik</b> yang ingin diberikan teguran.
+                    </p>
+                  </div>
+
+                  {/* Custom Message Input */}
+                  <div className="md:col-span-2 bg-white p-4 rounded-2xl border border-amber-200 shadow-xs space-y-3">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                      <Edit3 className="w-4 h-4 text-amber-600" /> Isi Pesan / Teguran Proktor
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={broadcastMessage}
+                      onChange={(e) => setBroadcastMessage(e.target.value)}
+                      placeholder="Tuliskan pesan peringatan di sini atau klik salah satu tombol template cepat di bawah..."
+                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-medium rounded-xl p-3 focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none"
+                    />
+
+                    {/* Quick Template Buttons (Point 2) */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        ⚡ Templat Pesan Peringatan Cepat:
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSendBroadcastWarning("🚨 Harap tenang dan tetap fokus pada layar ujian masing-masing!")}
+                          className="bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-amber-300 transition cursor-pointer active:scale-95"
+                        >
+                          🚨 FOKUS LAYAR UJIAN
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendBroadcastWarning("⏰ Waktu ujian tersisa 10 menit lagi! Harap periksa kembali jawaban Anda.")}
+                          className="bg-blue-100 hover:bg-blue-200 text-blue-900 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-blue-300 transition cursor-pointer active:scale-95"
+                        >
+                          ⏰ SISA WAKTU 10 MENIT
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendBroadcastWarning("⚠️ Peringatan Proktor: Dilarang keras berpindah tab atau mengecilkan browser!")}
+                          className="bg-rose-100 hover:bg-rose-200 text-rose-900 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-rose-300 transition cursor-pointer active:scale-95"
+                        >
+                          ⚠️ PERINGATAN DILARANG SWITCH TAB
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendBroadcastWarning("📢 Perhatian: Sesi ujian akan dihentikan oleh pengawas dalam 2 menit lagi!")}
+                          className="bg-orange-100 hover:bg-orange-200 text-orange-900 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-orange-300 transition cursor-pointer active:scale-95"
+                        >
+                          📢 UJIAN SEGERA DIHENTIKAN
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendBroadcastWarning("🚫 Peringatan Terakhir: Sisa 1x lagi pelanggaran Anda akan otomatis ter-submit diskualifikasi!")}
+                          className="bg-purple-100 hover:bg-purple-200 text-purple-900 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-purple-300 transition cursor-pointer active:scale-95"
+                        >
+                          🚫 PERINGATAN TERAKHIR (ULTIMATUM)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleSendBroadcastWarning()}
+                        className="bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl text-xs transition shadow-md flex items-center gap-2 cursor-pointer active:scale-95"
+                      >
+                        <Send className="w-4 h-4" /> Kirim Pesan Real-Time ke Peserta
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 

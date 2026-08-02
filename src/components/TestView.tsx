@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Question } from '../types';
+import { Question, BroadcastAlert } from '../types';
 import { formatQuestionText } from '../utils/questionFormatter';
-import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X, CheckCircle2, ShieldAlert, Lock } from 'lucide-react';
+import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X, CheckCircle2, ShieldAlert, Lock, Megaphone, Bell, AlertTriangle } from 'lucide-react';
 
 interface TestViewProps {
   questions: Question[];
@@ -14,6 +14,10 @@ interface TestViewProps {
   mapel?: string;
   studentName?: string;
   noPeserta?: string;
+  warnings?: number;
+  maxWarnings?: number;
+  broadcastAlert?: BroadcastAlert | null;
+  onDismissBroadcastAlert?: () => void;
   onAnswer: (optId: string) => void;
   onToggleRagu: (isRagu: boolean) => void;
   onSelectQuestion: (index: number) => void;
@@ -34,6 +38,10 @@ export const TestView: React.FC<TestViewProps> = ({
   mapel,
   studentName,
   noPeserta,
+  warnings = 0,
+  maxWarnings = 3,
+  broadcastAlert,
+  onDismissBroadcastAlert,
   onAnswer,
   onToggleRagu,
   onSelectQuestion,
@@ -187,6 +195,17 @@ export const TestView: React.FC<TestViewProps> = ({
             <Grid className="w-4 h-4 text-blue-600" />
             <span className="hidden xs:inline">Daftar</span> ({answeredCount}/{questions.length})
           </button>
+
+          {/* Status Peringatan Pelanggaran Badge */}
+          <div className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold ${
+            warnings > 0
+              ? 'bg-amber-50 text-amber-900 border-amber-300'
+              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+          }`}>
+            <ShieldAlert className={`w-3.5 h-3.5 ${warnings > 0 ? 'text-amber-600' : 'text-emerald-600'}`} />
+            <span className="hidden md:inline">Pelanggaran:</span>
+            <span>{warnings}/{maxWarnings}</span>
+          </div>
 
           {/* Timer Display */}
           <div className="bg-slate-100 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-xl border border-slate-200 flex items-center gap-2 sm:gap-3">
@@ -505,6 +524,45 @@ export const TestView: React.FC<TestViewProps> = ({
           </div>
         </div>
       )}
+      {/* Broadcast Alert Modal from Proktor (Point 2) */}
+      {broadcastAlert && (
+        <div className="fixed inset-0 z-[10000] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border-4 border-amber-400 space-y-5 relative overflow-hidden text-slate-800">
+            <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+              <div className="w-12 h-12 bg-amber-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-amber-200 shrink-0 animate-bounce">
+                <Megaphone className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="bg-amber-100 text-amber-900 font-mono font-bold text-[10px] px-2.5 py-0.5 rounded-full border border-amber-300 uppercase tracking-wider block w-max">
+                  📢 PESAN & PERINGATAN RESMI PROKTOR
+                </span>
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 mt-1">
+                  Pengawas Ujian (Proktor)
+                </h3>
+              </div>
+            </div>
+
+            <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 sm:p-5 text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">
+              <p className="whitespace-pre-wrap">{broadcastAlert.message}</p>
+              <div className="mt-3 pt-2 border-t border-amber-200/60 flex justify-between items-center text-[11px] text-amber-900/70 font-semibold">
+                <span>Pengirim: {broadcastAlert.sender || 'Proktor Ujian'}</span>
+                <span>{broadcastAlert.createdAt}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={onDismissBroadcastAlert}
+                className="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-black px-6 py-3.5 rounded-2xl text-sm transition-all shadow-lg active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-5 h-5" /> Saya Mengerti & Mengikuti Arahan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Blackout Anti-Recording & Screenshot Shield Overlay */}
       {isBlackedOut && (
         <div className="fixed inset-0 z-[9999] bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center text-white select-none animate-fade-in">
