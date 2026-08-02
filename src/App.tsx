@@ -690,6 +690,8 @@ export default function App() {
           mapel={config.mapel}
           mapelTitle={config.mapelTitle}
           subTitle={config.subTitle}
+          studentName={studentInfo.name}
+          noPeserta={studentInfo.noPeserta}
           onAnswer={handleAnswerOption}
           onToggleRagu={handleToggleRagu}
           onSelectQuestion={(idx) => setCurrentIndex(idx)}

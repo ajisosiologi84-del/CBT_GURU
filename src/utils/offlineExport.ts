@@ -21,6 +21,15 @@ export function exportOfflineAppHtml(config: AppConfig): void {
   <title>Aplikasi CBT ${mapelName} Offline Mandiri</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    @media print {
+      body { display: none !important; }
+    }
+    .no-select {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
     @keyframes shake {
       0%, 100% { transform: translateX(0); }
       20%, 60% { transform: translateX(-6px); }
@@ -203,7 +212,10 @@ export function exportOfflineAppHtml(config: AppConfig): void {
     </div>
 
     <!-- Exam Screen -->
-    <div id="test-screen" class="hidden bg-white rounded-3xl shadow-2xl w-full max-w-4xl my-auto overflow-hidden flex flex-col min-h-[500px]">
+    <div id="test-screen" class="hidden bg-white rounded-3xl shadow-2xl w-full max-w-4xl my-auto overflow-hidden flex flex-col min-h-[500px] relative no-select">
+      <!-- Watermark Container -->
+      <div id="security-watermark-overlay" class="absolute inset-0 pointer-events-none z-10 overflow-hidden flex flex-wrap justify-around items-center select-none opacity-15 rotate-[-22deg] p-4 font-mono text-[11px] font-black text-slate-800 leading-loose tracking-widest"></div>
+
       <div class="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center border-b border-slate-800 gap-2">
         <div>
           <span id="student-display-name" class="font-bold text-xs sm:text-sm text-blue-300 truncate block"></span>
@@ -289,6 +301,22 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       </div>
     </div>
   </main>
+
+  <!-- Blackout Shield Overlay -->
+  <div id="blackout-shield" class="hidden fixed inset-0 z-[9999] bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center text-white select-none">
+    <div class="w-20 h-20 bg-red-600/20 rounded-3xl flex items-center justify-center border-4 border-red-500 mb-5 animate-bounce shadow-2xl">
+      <span class="text-4xl">🔒</span>
+    </div>
+    <h2 class="text-2xl sm:text-3xl font-black text-red-500 mb-2 tracking-wide">
+      LAYAR TERKUNCI: PROTEKSI PEREKAMAN / TANGKAPAN LAYAR
+    </h2>
+    <p id="blackout-reason-text" class="text-xs sm:text-sm text-slate-300 max-w-lg mb-6 leading-relaxed font-medium bg-red-950/40 border border-red-900/50 p-4 rounded-2xl">
+      Sistem mendeteksi percobaan perekaman layar, tombol PrintScreen, atau pengalihan aplikasi.
+    </p>
+    <button id="btn-unlock-blackout" class="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold px-8 py-3.5 rounded-2xl text-sm shadow-2xl transition-all cursor-pointer">
+      Buka Kembali Layar Ujian
+    </button>
+  </div>
 
   <!-- Offline Script Engine -->
   <script>
@@ -558,6 +586,17 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       userAnswers = Array(activeExamQuestions.length).fill(null);
       activeQuestionIndex = 0;
 
+      // Populate security watermark grid overlay dynamically
+      const watermarkOverlay = document.getElementById('security-watermark-overlay');
+      if (watermarkOverlay) {
+        let watermarkHtml = '';
+        const waterText = (currentStudent.name || 'Siswa') + ' • NIS: ' + (currentStudent.noPeserta || '1001') + ' • CBT GURUAI OFFLINE • DILARANG MEREKAM / SCREENSHOT';
+        for (let i = 0; i < 12; i++) {
+          watermarkHtml += '<div class="m-8 whitespace-nowrap">' + waterText + '</div>';
+        }
+        watermarkOverlay.innerHTML = watermarkHtml;
+      }
+
       renderQuestion();
       startTimer();
 
@@ -706,6 +745,28 @@ export function exportOfflineAppHtml(config: AppConfig): void {
     // Security & Anti-Cheat Handlers
     let warningsCount = 0;
     const maxWarnings = 3;
+    const blackoutShield = document.getElementById('blackout-shield');
+    const blackoutReasonText = document.getElementById('blackout-reason-text');
+    const btnUnlockBlackout = document.getElementById('btn-unlock-blackout');
+
+    if (btnUnlockBlackout) {
+      btnUnlockBlackout.addEventListener('click', () => {
+        if (blackoutShield) blackoutShield.classList.add('hidden');
+      });
+    }
+
+    function clearClipboard() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText('').catch(() => {});
+      }
+    }
+
+    function triggerBlackout(reason) {
+      clearClipboard();
+      if (blackoutReasonText) blackoutReasonText.textContent = reason;
+      if (blackoutShield) blackoutShield.classList.remove('hidden');
+      handleViolation(reason);
+    }
 
     function handleViolation(reason) {
       if (isExamFinished || !currentStudent) return;
@@ -714,21 +775,28 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       if (warningsCount >= maxWarnings) {
         alert('PERINGATAN KEAMANAN MAKSIMAL (' + warningsCount + '/3):\nAnda telah melanggar aturan sebanyak 3 kali (' + reason + '). Ujian otomatis dihentikan dan jawaban Anda langsung terkirim!');
         finishExam();
-      } else {
-        alert('PERINGATAN KEAMANAN (' + warningsCount + '/3):\n' + reason + '\n\nPerhatian: Jika melanggar 3 kali, ujian akan otomatis dihentikan dan jawaban dikirim.');
       }
+    }
+
+    // Intercept Web Screen Capture API
+    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+      const origDisplay = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getDisplayMedia = function() {
+        triggerBlackout('Mencoba melakukan Perekaman Layar (Screen Capture API)!');
+        return Promise.reject(new Error('Perekaman layar diblokir oleh CBT.'));
+      };
     }
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && !isExamFinished && testScreen && !testScreen.classList.contains('hidden')) {
-        handleViolation('Meninggalkan layar ujian atau berpindah aplikasi');
+        triggerBlackout('Meninggalkan layar ujian atau berpindah aplikasi');
       }
     });
 
     window.addEventListener('blur', () => {
       setTimeout(() => {
         if (!document.hasFocus() && !isExamFinished && testScreen && !testScreen.classList.contains('hidden')) {
-          handleViolation('Layar ujian kehilangan fokus');
+          triggerBlackout('Layar ujian kehilangan fokus (buka aplikasi lain / screenshot tool)');
         }
       }, 300);
     });
@@ -736,15 +804,36 @@ export function exportOfflineAppHtml(config: AppConfig): void {
     document.addEventListener('keydown', (e) => {
       if (!isExamFinished && testScreen && !testScreen.classList.contains('hidden')) {
         if (
-          e.key === 'F12' ||
-          (e.ctrlKey && e.shiftKey && ['I', 'J', 'i', 'j'].includes(e.key)) ||
-          (e.ctrlKey && ['U', 'u', 'C', 'c', 'V', 'v'].includes(e.key)) ||
           e.key === 'PrintScreen' ||
+          (e.ctrlKey && (e.key === 'p' || e.key === 'P')) ||
+          (e.metaKey && e.shiftKey && ['3', '4', '5', 's', 'S'].includes(e.key)) ||
+          (e.ctrlKey && e.shiftKey && ['S', 's', 'I', 'i', 'J', 'j'].includes(e.key)) ||
+          (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 'c' || e.key === 'C')) ||
+          e.key === 'F12' ||
           (e.altKey && e.key === 'Tab')
         ) {
           e.preventDefault();
-          handleViolation('Penggunaan shortcut keyboard dilarang');
+          triggerBlackout('Penggunaan Shortcut Screenshot / Perekaman Layar Dilarang!');
         }
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'PrintScreen') {
+        clearClipboard();
+        triggerBlackout('Tombol PrintScreen Ditekan! Papan Klip Dibersihkan.');
+      }
+    });
+
+    document.addEventListener('contextmenu', (e) => {
+      if (!isExamFinished && testScreen && !testScreen.classList.contains('hidden')) {
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('dragstart', (e) => {
+      if (!isExamFinished && testScreen && !testScreen.classList.contains('hidden')) {
+        e.preventDefault();
       }
     });
 

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Question } from '../types';
 import { formatQuestionText } from '../utils/questionFormatter';
-import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X, CheckCircle2, ShieldAlert, Lock } from 'lucide-react';
 
 interface TestViewProps {
   questions: Question[];
@@ -12,6 +12,8 @@ interface TestViewProps {
   mapelTitle?: string;
   subTitle?: string;
   mapel?: string;
+  studentName?: string;
+  noPeserta?: string;
   onAnswer: (optId: string) => void;
   onToggleRagu: (isRagu: boolean) => void;
   onSelectQuestion: (index: number) => void;
@@ -29,6 +31,8 @@ export const TestView: React.FC<TestViewProps> = ({
   mapelTitle,
   subTitle,
   mapel,
+  studentName,
+  noPeserta,
   onAnswer,
   onToggleRagu,
   onSelectQuestion,
@@ -39,6 +43,63 @@ export const TestView: React.FC<TestViewProps> = ({
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [isConfirmedChecked, setIsConfirmedChecked] = useState(false);
+  const [isBlackedOut, setIsBlackedOut] = useState(false);
+  const [blackoutReason, setBlackoutReason] = useState<string>('');
+
+  // Intercept Screen Capture & Screenshot Attempts
+  useEffect(() => {
+    const clearClipboard = () => {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText('').catch(() => {});
+      }
+    };
+
+    const triggerBlackout = (reason: string) => {
+      clearClipboard();
+      setBlackoutReason(reason);
+      setIsBlackedOut(true);
+    };
+
+    // Override Web Screen Recording API
+    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+      const origDisplay = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getDisplayMedia = async function(...args) {
+        triggerBlackout('Perekaman Layar (Screen Capture API) terdeteksi dan diblokir oleh sistem CBT!');
+        throw new Error('Screen capture is blocked by CBT System.');
+      };
+      return () => {
+        navigator.mediaDevices.getDisplayMedia = origDisplay;
+      };
+    }
+
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (
+        e.key === 'PrintScreen' ||
+        (e.ctrlKey && e.key.toLowerCase() === 'p') ||
+        (e.metaKey && e.shiftKey && ['3', '4', '5', 's'].includes(e.key.toLowerCase())) ||
+        (e.ctrlKey && e.shiftKey && ['s', 'i', 'j'].includes(e.key.toLowerCase())) ||
+        e.key === 'F12'
+      ) {
+        e.preventDefault();
+        triggerBlackout('Tangkapan Layar (Screenshot) / Shortcut Dilarang!');
+      }
+    };
+
+    const handleKeyup = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen') {
+        clearClipboard();
+        triggerBlackout('Tombol PrintScreen ditekan! Papan Klip Dibersihkan.');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+    window.addEventListener('keyup', handleKeyup);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('keyup', handleKeyup);
+    };
+  }, []);
 
   const currentQuestion = questions[currentIndex];
   const currentAnswer = answers[currentIndex];
@@ -145,7 +206,15 @@ export const TestView: React.FC<TestViewProps> = ({
       </header>
 
       {/* Main Examination Canvas */}
-      <main className="flex-1 flex overflow-hidden relative">
+      <main className="flex-1 flex overflow-hidden relative no-capture">
+        {/* Dynamic Anti-Leak Watermark Grid Overlay */}
+        <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden flex flex-wrap justify-around items-center select-none opacity-15 rotate-[-22deg] p-4 font-mono text-[11px] font-black text-slate-800 leading-loose tracking-widest">
+          {Array.from({ length: 12 }).map((_, idx) => (
+            <div key={idx} className="m-8 whitespace-nowrap">
+              {studentName || 'PESERTA UJIAN'} • NIS: {noPeserta || 'CBT-2026'} • DILARANG MEREKAM / SCREENSHOT
+            </div>
+          ))}
+        </div>
         {/* Left Area: Current Question */}
         <div className="flex-1 flex flex-col p-3 sm:p-6 overflow-y-auto custom-scrollbar">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-8 max-w-4xl w-full mx-auto flex-1 flex flex-col my-auto sm:my-0">
@@ -429,6 +498,30 @@ export const TestView: React.FC<TestViewProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Blackout Anti-Recording & Screenshot Shield Overlay */}
+      {isBlackedOut && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center text-white select-none animate-fade-in">
+          <div className="w-20 h-20 bg-red-600/20 rounded-3xl flex items-center justify-center border-4 border-red-500 mb-5 animate-pulse shadow-2xl shadow-red-900/50">
+            <Lock className="w-10 h-10 text-red-500" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-red-500 mb-2 tracking-wide">
+            LAYAR TERKUNCI: PROTEKSI PEREKAMAN / TANGKAPAN LAYAR
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300 max-w-lg mb-6 leading-relaxed font-medium bg-red-950/40 border border-red-900/50 p-4 rounded-2xl">
+            {blackoutReason || 'Sistem mendeteksi percobaan perekaman layar, tombol PrintScreen, atau pengalihan aplikasi.'}
+            <br />
+            <span className="text-amber-400 font-bold block mt-1">
+              Papan klip (Clipboard) telah dibersihkan demi keamanan soal ujian.
+            </span>
+          </p>
+          <button
+            onClick={() => setIsBlackedOut(false)}
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold px-8 py-3.5 rounded-2xl text-sm shadow-2xl transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+          >
+            <ShieldAlert className="w-5 h-5" /> Buka Kembali Layar Ujian
+          </button>
         </div>
       )}
     </div>
