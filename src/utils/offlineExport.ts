@@ -159,6 +159,19 @@ export function exportOfflineAppHtml(config: AppConfig): void {
           <button type="button" id="active-token-badge" class="font-mono font-black bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-3 py-1.5 rounded-lg text-sm shadow-sm transition cursor-pointer" title="Klik untuk salin token ujian"></button>
         </div>
 
+        <!-- Security Badges Feature Box -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-950 text-xs shadow-2xs">
+          <div class="font-extrabold text-amber-900 mb-1 flex items-center gap-1.5">
+            <span>🛡️</span> <span>Fitur Keamanan CBT Offline Mandiri:</span>
+          </div>
+          <div class="grid grid-cols-2 gap-1.5 text-[11px] font-semibold text-amber-900">
+            <div class="flex items-center gap-1"><span class="text-amber-600">🔀</span> Soal & Opsi Diacak</div>
+            <div class="flex items-center gap-1"><span class="text-amber-600">🔒</span> Anti-PrintScreen & Screen Capture</div>
+            <div class="flex items-center gap-1"><span class="text-amber-600">💧</span> Watermark Matriks Nama</div>
+            <div class="flex items-center gap-1"><span class="text-amber-600">⚡</span> Audit Log Terenkripsi (.cbt)</div>
+          </div>
+        </div>
+
         {/* Siswa Form */}
         <div id="siswa-form" class="space-y-3">
           <div>
@@ -316,6 +329,40 @@ export function exportOfflineAppHtml(config: AppConfig): void {
     <button id="btn-unlock-blackout" class="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold px-8 py-3.5 rounded-2xl text-sm shadow-2xl transition-all cursor-pointer">
       Buka Kembali Layar Ujian
     </button>
+  </div>
+
+  <!-- Online Warning & Offline Mode Instruction Modal -->
+  <div id="online-warning-modal" class="hidden fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 select-none">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 text-slate-800 relative overflow-hidden border border-amber-300 animate-fade-in">
+      <button id="btn-close-online-modal" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full cursor-pointer font-extrabold text-sm">✕</button>
+      <div class="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-600 border border-amber-300 text-3xl font-bold">📡</div>
+      <div class="text-center mb-4">
+        <span class="inline-block px-3 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-full border border-amber-300 mb-2">⚠️ Peringatan Keamanan CBT</span>
+        <h3 class="text-xl font-extrabold text-slate-900">Terdeteksi Koneksi Online (Internet Aktif)</h3>
+      </div>
+      <div class="space-y-3 mb-6">
+        <div class="p-4 bg-amber-50 rounded-2xl border-2 border-amber-300 text-amber-950 text-xs sm:text-sm font-semibold leading-relaxed">
+          <p class="font-bold text-amber-900 mb-1">⚠️ Pindahkan Mode Offline agar bisa mengerjakan CBT!</p>
+          Sistem mendeteksi bahwa perangkat Anda saat ini terhubung ke jaringan internet (Mode Online). Untuk mencegah kecurangan, browsing jawaban, dan pengalihan fokus saat ujian, Anda diwajibkan menggunakan Mode Offline.
+        </div>
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700">
+          <p class="font-bold text-slate-800 mb-1">Petunjuk Beralih ke Mode Offline:</p>
+          <ol class="list-decimal pl-4 space-y-0.5 text-slate-600">
+            <li>Matikan <b>Wi-Fi</b> atau <b>Data Seluler</b> di HP/Laptop.</li>
+            <li>Atau aktifkan <b>Mode Pesawat (Airplane Mode)</b>.</li>
+            <li>Status jaringan di bawah ini akan otomatis berubah menjadi Offline.</li>
+          </ol>
+        </div>
+        <div id="online-status-badge" class="p-3 rounded-xl border font-bold text-xs flex items-center justify-between bg-red-50 text-red-700 border-red-200">
+          <span>Status Jaringan Saat Ini:</span>
+          <span id="online-status-text" class="font-black uppercase tracking-wider">🔴 ONLINE</span>
+        </div>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-2">
+        <button id="btn-recheck-online" class="w-full sm:w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-4 rounded-2xl text-xs cursor-pointer">🔄 Cek Ulang Koneksi</button>
+        <button id="btn-proceed-online" class="w-full sm:w-1/2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-4 rounded-2xl text-xs cursor-pointer">Lanjutkan Mengerjakan ➔</button>
+      </div>
+    </div>
   </div>
 
   <!-- Offline Script Engine -->
@@ -532,7 +579,59 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       startExam();
     });
 
+    // Online Warning Modal Handlers
+    const onlineWarningModal = document.getElementById('online-warning-modal');
+    const onlineStatusText = document.getElementById('online-status-text');
+    const onlineStatusBadge = document.getElementById('online-status-badge');
+    const btnCloseOnlineModal = document.getElementById('btn-close-online-modal');
+    const btnRecheckOnline = document.getElementById('btn-recheck-online');
+    const btnProceedOnline = document.getElementById('btn-proceed-online');
+
+    function checkOnlineStatusUI() {
+      if (navigator.onLine) {
+        if (onlineStatusBadge) onlineStatusBadge.className = 'p-3 rounded-xl border font-bold text-xs flex items-center justify-between bg-red-50 text-red-700 border-red-200';
+        if (onlineStatusText) onlineStatusText.textContent = '🔴 ONLINE (Terhubung Internet)';
+      } else {
+        if (onlineStatusBadge) onlineStatusBadge.className = 'p-3 rounded-xl border font-bold text-xs flex items-center justify-between bg-emerald-50 text-emerald-700 border-emerald-200';
+        if (onlineStatusText) onlineStatusText.textContent = '🟢 OFFLINE (Aman Ujian)';
+      }
+    }
+
+    if (btnCloseOnlineModal) {
+      btnCloseOnlineModal.addEventListener('click', () => {
+        if (onlineWarningModal) onlineWarningModal.classList.add('hidden');
+      });
+    }
+
+    if (btnRecheckOnline) {
+      btnRecheckOnline.addEventListener('click', () => {
+        checkOnlineStatusUI();
+        if (!navigator.onLine) {
+          alert('Mode Offline Terdeteksi Aktif! Perangkat Anda siap untuk pengerjaan ujian.');
+        }
+      });
+    }
+
+    if (btnProceedOnline) {
+      btnProceedOnline.addEventListener('click', () => {
+        if (onlineWarningModal) onlineWarningModal.classList.add('hidden');
+        proceedStartExam();
+      });
+    }
+
+    window.addEventListener('online', checkOnlineStatusUI);
+    window.addEventListener('offline', checkOnlineStatusUI);
+
     function startExam() {
+      if (navigator.onLine) {
+        checkOnlineStatusUI();
+        if (onlineWarningModal) onlineWarningModal.classList.remove('hidden');
+      } else {
+        proceedStartExam();
+      }
+    }
+
+    function proceedStartExam() {
       loginScreen.classList.add('hidden');
       testScreen.classList.remove('hidden');
 

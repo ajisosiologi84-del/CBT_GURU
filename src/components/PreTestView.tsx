@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppConfig, StudentInfo } from '../types';
-import { BookOpen, Clock, ShieldAlert, PlayCircle, CheckCircle2, Award } from 'lucide-react';
+import { BookOpen, Clock, ShieldAlert, PlayCircle, CheckCircle2, Award, WifiOff, Wifi, AlertTriangle, RefreshCw, ArrowRight, X } from 'lucide-react';
 
 interface PreTestViewProps {
   config: AppConfig;
@@ -19,6 +19,34 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
   onStartTest,
   onBackToPortal,
 }) => {
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [showOnlineModal, setShowOnlineModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleStartButtonClick = () => {
+    if (isLimitReached || isSessionClosed || isSessionDraft) return;
+
+    if (navigator.onLine) {
+      setIsOnline(true);
+      setShowOnlineModal(true);
+    } else {
+      setIsOnline(false);
+      onStartTest();
+    }
+  };
+
   const isLimitReached = studentAttemptsCount >= maxAttempts;
   const sessionStatus = config.examSchedule?.sessionStatus || 'ACTIVE';
   const isSessionClosed = sessionStatus === 'CLOSED';
@@ -111,15 +139,46 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
           </div>
 
           {/* Security & Rules Banner */}
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 mb-6 sm:mb-8">
-            <h3 className="font-bold text-amber-900 mb-2 sm:mb-2.5 flex items-center gap-2 text-xs sm:text-sm">
-              <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 shrink-0" /> Tata Tertib & Keamanan Ujian CBT
+          <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 mb-6 sm:mb-8 text-amber-950 shadow-xs">
+            <h3 className="font-extrabold text-amber-900 mb-3 flex items-center gap-2 text-xs sm:text-sm">
+              <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0" /> Fitur Keamanan & Tata Tertib Ujian CBT
             </h3>
-            <ul className="text-xs text-amber-900 space-y-1.5 sm:space-y-2 list-disc pl-4 sm:pl-5 leading-relaxed">
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3 text-xs font-semibold">
+              <div className="p-2.5 bg-white/80 rounded-xl border border-amber-200 flex items-center gap-2">
+                <span className="text-base">🔀</span>
+                <div>
+                  <span className="font-bold text-amber-950 block">Acak Soal & Opsi Jawaban</span>
+                  <span className="text-[11px] text-amber-800 font-normal">Urutan soal & pilihan diacak unik per peserta</span>
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/80 rounded-xl border border-amber-200 flex items-center gap-2">
+                <span className="text-base">🔒</span>
+                <div>
+                  <span className="font-bold text-amber-950 block">Anti-Screenshot & Recording</span>
+                  <span className="text-[11px] text-amber-800 font-normal">PrintScreen & Screen Capture API diblokir</span>
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/80 rounded-xl border border-amber-200 flex items-center gap-2">
+                <span className="text-base">💧</span>
+                <div>
+                  <span className="font-bold text-amber-950 block">Watermark Identitas Peserta</span>
+                  <span className="text-[11px] text-amber-800 font-normal">Matriks Nama & NIS tercetak di layar ujian</span>
+                </div>
+              </div>
+              <div className="p-2.5 bg-white/80 rounded-xl border border-amber-200 flex items-center gap-2">
+                <span className="text-base">⚡</span>
+                <div>
+                  <span className="font-bold text-amber-950 block">Audit Log Pelanggaran</span>
+                  <span className="text-[11px] text-amber-800 font-normal">Maks 3x pindah tab sebelum ujian dikunci</span>
+                </div>
+              </div>
+            </div>
+
+            <ul className="text-xs text-amber-900 space-y-1.5 list-disc pl-4 sm:pl-5 leading-relaxed font-medium">
               <li>Ujian memerlukan akses <b>Layar Penuh (Fullscreen)</b> secara otomatis.</li>
-              <li>Sistem mendeteksi jika Anda berpindah tab, mengecilkan layar, atau membuka aplikasi lain.</li>
-              <li>Pelanggaran berturut-turut dikendalikan sistem (<b>maksimal 3 kali peringatan</b>). Pelanggaran ke-4 akan mengumpulkan jawaban secara otomatis!</li>
-              <li>Dilarang menyalin (Copy-Paste) atau menggunakan tombol pintas keyboard (F12, Ctrl+C/V/U, PrintScreen).</li>
+              <li>Disarankan memindahkan perangkat ke <b>Mode Pesawat / Offline</b> saat mengerjakan untuk kenyamanan maksimal.</li>
+              <li>Setiap kecurangan (screenshot, pindah tab) dicatat langsung dalam <b>Audit Log Terenkripsi (.cbt)</b> untuk ditinjau oleh Guru Pengampu.</li>
             </ul>
           </div>
 
@@ -131,11 +190,7 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
               Kembali ke Portal
             </button>
             <button
-              onClick={() => {
-                if (!isStartDisabled) {
-                  onStartTest();
-                }
-              }}
+              onClick={handleStartButtonClick}
               disabled={isStartDisabled}
               className={`w-full sm:w-2/3 ${
                 isStartDisabled 
@@ -155,6 +210,98 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* ONLINE MODE WARNING & OFFLINE INSTRUCTION MODAL */}
+      {showOnlineModal && (
+        <div className="fixed inset-0 z-[999] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 sm:p-8 border border-amber-200 text-slate-800 relative overflow-hidden animate-scale-up">
+            <button 
+              onClick={() => setShowOnlineModal(false)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-600 border border-amber-300 shadow-inner">
+              <WifiOff className="w-8 h-8 animate-pulse" />
+            </div>
+
+            <div className="text-center mb-5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 font-bold text-xs rounded-full border border-amber-300 mb-2">
+                <AlertTriangle className="w-3.5 h-3.5" /> Peringatan Keamanan CBT
+              </span>
+              <h3 className="text-xl font-extrabold text-slate-900">
+                Terdeteksi Koneksi Online (Internet Aktif)
+              </h3>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <div className="p-4 bg-amber-50 rounded-2xl border-2 border-amber-300 text-amber-950 text-xs sm:text-sm font-semibold leading-relaxed">
+                <p className="font-bold text-amber-900 mb-1 flex items-center gap-1.5">
+                  ⚠️ Pindahkan Mode Offline agar bisa mengerjakan CBT!
+                </p>
+                Sistem mendeteksi perangkat Anda terhubung ke internet. Untuk mencegah kecurangan, browsing jawaban, dan pengalihan fokus saat ujian, Anda sangat disarankan untuk mematikan koneksi internet.
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1">
+                <p className="font-bold text-slate-800">Petunjuk Beralih ke Mode Offline:</p>
+                <ol className="list-decimal pl-4 space-y-0.5 text-slate-600">
+                  <li>Matikan <b>Wi-Fi</b> atau <b>Data Seluler</b> di HP / Laptop Anda.</li>
+                  <li>Atau aktifkan <b>Mode Pesawat (Airplane Mode)</b>.</li>
+                  <li>Aplikasi CBT akan otomatis mendeteksi status Offline Anda.</li>
+                </ol>
+              </div>
+
+              {/* Realtime Status Badge */}
+              <div className={`p-3 rounded-xl border font-bold text-xs flex items-center justify-between ${
+                isOnline 
+                  ? 'bg-red-50 text-red-700 border-red-200' 
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              }`}>
+                <span className="flex items-center gap-2">
+                  {isOnline ? <Wifi className="w-4 h-4 text-red-500" /> : <WifiOff className="w-4 h-4 text-emerald-600" />}
+                  Status Jaringan Saat Ini:
+                </span>
+                <span className="font-black uppercase tracking-wider">
+                  {isOnline ? '🔴 ONLINE' : '🟢 OFFLINE (Aman)'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              {!isOnline ? (
+                <button
+                  onClick={() => {
+                    setShowOnlineModal(false);
+                    onStartTest();
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-5 rounded-2xl text-sm shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
+                >
+                  <CheckCircle2 className="w-5 h-5" /> Mode Offline Aktif - Mulai Ujian Now
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsOnline(navigator.onLine)}
+                    className="w-full sm:w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 px-4 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className="w-4 h-4" /> Cek Koneksi Lagi
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowOnlineModal(false);
+                      onStartTest();
+                    }}
+                    className="w-full sm:w-1/2 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 px-4 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                  >
+                    <span>Lanjutkan Ujian</span> <ArrowRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

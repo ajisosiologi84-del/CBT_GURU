@@ -5708,7 +5708,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         {selectedAuditResult.cheatingLogs.map((log, idx) => (
                           <tr key={idx} className="hover:bg-slate-50">
                             <td className="p-3 font-mono font-bold text-slate-600">{log.timestamp}</td>
-                            <td className="p-3 font-medium text-slate-800">{log.reason}</td>
+                            <td className="p-3 font-medium text-slate-800">{log.type || log.details || (log as any).reason || 'Peringatan Keamanan Ujian'}</td>
                             <td className="p-3 text-center">
                               <span className="bg-amber-100 text-amber-800 font-bold text-[10px] px-2 py-0.5 rounded-full border border-amber-200">
                                 Peringatan #{idx + 1}

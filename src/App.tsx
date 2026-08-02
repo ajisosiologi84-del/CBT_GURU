@@ -381,6 +381,7 @@ export default function App() {
         {
           timestamp: new Date().toLocaleTimeString('id-ID'),
           type: logMsg,
+          details: logMsg,
         },
       ]);
 
