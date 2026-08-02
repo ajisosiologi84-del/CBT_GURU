@@ -68,11 +68,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
           return;
         }
 
+        const activeExamToken = restoredConfig.examToken || config.examToken || 'SOS2026';
+        const finalRestoredConfig = {
+          ...restoredConfig,
+          examToken: activeExamToken,
+        };
+
         if (onSaveConfig) {
-          onSaveConfig(restoredConfig);
+          onSaveConfig(finalRestoredConfig);
           setErrorMsg('');
           setSuccessMsg(
-            `Paket Ujian "${restoredConfig.mapel || 'CBT'}" Berhasil Dimuat! Token Aktif: "${restoredConfig.examToken || 'SOS2026'}" (${restoredConfig.questions.length} Soal)`
+            `Paket Ujian "${finalRestoredConfig.mapel || 'CBT'}" Berhasil Dimuat! Token Aktif Tersinkron: "${activeExamToken}" (${finalRestoredConfig.questions.length} Soal)`
           );
         }
       } catch (err: any) {

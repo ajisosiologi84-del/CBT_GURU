@@ -298,14 +298,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const studentsList: StudentUser[] = config.students || [];
   const teachersList: TeacherUser[] = config.teachers || [];
 
+  // Sync internal state with config prop when config changes (e.g. from restore, firebase sync, mapel switch)
+  React.useEffect(() => {
+    if (config) {
+      if (config.examToken) setCurrentToken(config.examToken);
+      if (config.mapel) setMapelInput(config.mapel);
+      if (config.kodeGuru) setKodeGuruInput(config.kodeGuru);
+      if (config.mapelTitle) setMapelTitleInput(config.mapelTitle);
+      if (config.subTitle) setSubTitleInput(config.subTitle);
+      if (config.driveUploadUrl !== undefined) setDriveUploadUrlInput(config.driveUploadUrl || '');
+      if (config.youtubeGuideUrl !== undefined) setYoutubeGuideUrlInput(config.youtubeGuideUrl || '');
+      if (config.mapelList && config.mapelList.length > 0) setMapelList(config.mapelList);
+    }
+  }, [
+    config.examToken,
+    config.mapel,
+    config.kodeGuru,
+    config.mapelTitle,
+    config.subTitle,
+    config.driveUploadUrl,
+    config.youtubeGuideUrl,
+    config.mapelList,
+  ]);
+
   // --- BACKUP & RESTORE APP DATA HANDLERS ---
   const handleBackupAppData = () => {
     try {
+      const activeToken = currentToken || config.examToken || 'SOS2026';
       const backupPayload = {
         appName: 'CBT_GURUAI',
         version: '2.0',
         exportedAt: new Date().toISOString(),
-        config,
+        config: {
+          ...config,
+          examToken: activeToken,
+        },
         studentResults,
       };
 
@@ -340,12 +367,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         return isThisMapel && isActive;
       });
 
+      const activeToken = currentToken || config.examToken || 'SOS2026';
+
       const packagePayload = {
         appName: 'CBT_GURUAI',
         version: '2.0',
         exportedAt: new Date().toISOString(),
         config: {
           ...config,
+          examToken: activeToken,
           mapel: activeMapel,
           questions: activeQuestions,
         },
@@ -362,13 +392,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const mapelClean = activeMapel.replace(/[^a-zA-Z0-9]/g, '_');
 
       link.href = url;
-      link.download = `PAKET_SOAL_${mapelClean}_${config.examToken || 'TOKEN'}_${dateStr}_${timeStr}.json`;
+      link.download = `PAKET_SOAL_${mapelClean}_${activeToken}_${dateStr}_${timeStr}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showAlert(`Paket Soal Aktif "${activeMapel}" (${activeQuestions.length} Soal - Token: "${config.examToken || '-'}") berhasil dieksport sebagai file JSON backup terenkripsi!`);
+      showAlert(`Paket Soal Aktif "${activeMapel}" (${activeQuestions.length} Soal - Token Tersinkron: "${activeToken}") berhasil dieksport sebagai file JSON backup terenkripsi!`);
     } catch (e) {
       console.error(e);
       showAlert('Gagal membuat paket soal aktif!');
@@ -396,15 +426,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           return;
         }
 
+        const restoredExamToken = restoredConfig.examToken || config.examToken || 'SOS2026';
+        const finalRestoredConfig = {
+          ...restoredConfig,
+          examToken: restoredExamToken,
+        };
+
         showConfirm(
           'Memulihkan Seluruh Data Backup Terenkripsi?',
-          'Apakah Anda yakin ingin memulihkan (restore) seluruh data aplikasi dari file backup terenkripsi ini? Seluruh bank soal, data user, dan rekap nilai akan diperbarui.',
+          `Apakah Anda yakin ingin memulihkan (restore) seluruh data aplikasi dari file backup terenkripsi ini? Seluruh bank soal, data user, dan token ujian ("${restoredExamToken}") akan disinkronkan.`,
           () => {
-            onSaveConfig(restoredConfig);
+            onSaveConfig(finalRestoredConfig);
+            setCurrentToken(restoredExamToken);
             if (Array.isArray(parsed.studentResults)) {
               onSaveStudentResults(parsed.studentResults);
             }
-            showAlert('Sukses! Seluruh data aplikasi CBT GURUAI berhasil dipulihkan dari file backup terenkripsi.');
+            showAlert(`Sukses! Seluruh data aplikasi & paket soal dengan Token "${restoredExamToken}" berhasil dipulihkan dari file backup terenkripsi.`);
           },
           true
         );
