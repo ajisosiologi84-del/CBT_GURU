@@ -3,6 +3,7 @@ import { AppConfig, Question, StudentResult, StudentUser, TeacherUser, KopSekola
 import { decryptResult, encryptAppBackup, decryptAppBackup } from '../utils/crypto';
 import { formatQuestionText } from '../utils/questionFormatter';
 import { generateResultsPdfReport, generateIndividualStudentPdf, generateItemAnalysisPdfReport, ItemAnalysisData, defaultKopSekolah } from '../utils/pdfGenerator';
+import { DownloadAnimationModal } from './DownloadAnimationModal';
 import * as XLSX from 'xlsx';
 import {
   Sliders,
@@ -120,6 +121,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showLeaderboardPodium, setShowLeaderboardPodium] = useState(true);
   const [selectedAuditResult, setSelectedAuditResult] = useState<StudentResult | null>(null);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+
+  // Download Animation Modal State
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [downloadModalConfig, setDownloadModalConfig] = useState<{
+    title: string;
+    subtitle?: string;
+    fileName: string;
+    fileType: 'json' | 'cbt' | 'pdf' | 'xlsx';
+    onCompleteAction: () => void;
+  }>({
+    title: '',
+    fileName: '',
+    fileType: 'json',
+    onCompleteAction: () => {},
+  });
 
   // Schedule & Exam Session Config State
   const [scheduleStartTime, setScheduleStartTime] = useState<string>(config.examSchedule?.startTime || '');
@@ -403,6 +419,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       console.error(e);
       showAlert('Gagal membuat paket soal aktif!');
     }
+  };
+
+  const triggerExportActivePaketJsonWithAnimation = () => {
+    const activeMapel = config.mapel || 'Sosiologi';
+    const activeToken = currentToken || config.examToken || 'SOS2026';
+    const mapelClean = activeMapel.replace(/[^a-zA-Z0-9]/g, '_');
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+    const fileName = `PAKET_SOAL_${mapelClean}_${activeToken}_${dateStr}_${timeStr}.json`;
+
+    setDownloadModalConfig({
+      title: 'Mengunduh Paket Soal Aktif',
+      subtitle: `Mengenkripsi paket soal "${activeMapel}" & Token "${activeToken}"...`,
+      fileName: fileName,
+      fileType: 'json',
+      onCompleteAction: handleExportActivePaketJson,
+    });
+    setIsDownloadModalOpen(true);
+  };
+
+  const triggerBackupAppDataWithAnimation = () => {
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+    const fileName = `BACKUP_TERENKRIPSI_CBT_GURUAI_${dateStr}_${timeStr}.json`;
+
+    setDownloadModalConfig({
+      title: 'Mengunduh Backup Data Sistem',
+      subtitle: 'Mencadangkan seluruh bank soal, data user, dan token ujian...',
+      fileName: fileName,
+      fileType: 'json',
+      onCompleteAction: handleBackupAppData,
+    });
+    setIsDownloadModalOpen(true);
   };
 
   const handleRestoreAppData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1916,7 +1965,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </p>
               <div className="space-y-2">
                 <button
-                  onClick={handleExportActivePaketJson}
+                  onClick={triggerExportActivePaketJsonWithAnimation}
                   className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-800/90 text-sky-400 hover:bg-sky-600 hover:text-white transition-all border border-slate-700/60 shadow-xs cursor-pointer"
                   title="Unduh file Paket Soal Aktif (.json)"
                 >
@@ -3848,7 +3897,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </p>
                 </div>
                 <button
-                  onClick={handleBackupAppData}
+                  onClick={triggerBackupAppDataWithAnimation}
                   className="bg-purple-700 hover:bg-purple-800 active:bg-purple-900 text-white font-bold px-5 py-3 rounded-xl text-xs transition-all shadow-md shrink-0 flex items-center gap-2 cursor-pointer"
                 >
                   <Download className="w-4 h-4" /> Download Backup (.json)
@@ -5773,6 +5822,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
+      {/* MODAL: DOWNLOAD ANIMATION */}
+      <DownloadAnimationModal
+        isOpen={isDownloadModalOpen}
+        title={downloadModalConfig.title}
+        subtitle={downloadModalConfig.subtitle}
+        fileName={downloadModalConfig.fileName}
+        fileType={downloadModalConfig.fileType}
+        onComplete={downloadModalConfig.onCompleteAction}
+        onClose={() => setIsDownloadModalOpen(false)}
+      />
         </div>
       </div>
     </div>

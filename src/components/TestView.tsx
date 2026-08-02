@@ -20,6 +20,7 @@ interface TestViewProps {
   onPrev: () => void;
   onNext: () => void;
   onFinish: () => void;
+  onScreenRecordDetected?: (reason: string) => void;
 }
 
 export const TestView: React.FC<TestViewProps> = ({
@@ -39,6 +40,7 @@ export const TestView: React.FC<TestViewProps> = ({
   onPrev,
   onNext,
   onFinish,
+  onScreenRecordDetected,
 }) => {
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
@@ -58,13 +60,16 @@ export const TestView: React.FC<TestViewProps> = ({
       clearClipboard();
       setBlackoutReason(reason);
       setIsBlackedOut(true);
+      if (onScreenRecordDetected) {
+        onScreenRecordDetected(reason);
+      }
     };
 
     // Override Web Screen Recording API
     if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
       const origDisplay = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
       navigator.mediaDevices.getDisplayMedia = async function(...args) {
-        triggerBlackout('Perekaman Layar (Screen Capture API) terdeteksi dan diblokir oleh sistem CBT!');
+        triggerBlackout('Perekaman Layar HP/Desktop (Screen Capture API) terdeteksi!');
         throw new Error('Screen capture is blocked by CBT System.');
       };
       return () => {
@@ -81,7 +86,7 @@ export const TestView: React.FC<TestViewProps> = ({
         e.key === 'F12'
       ) {
         e.preventDefault();
-        triggerBlackout('Tangkapan Layar (Screenshot) / Shortcut Dilarang!');
+        triggerBlackout('Tangkapan Layar (Screenshot) / Shortcut Perekaman Dilarang!');
       }
     };
 
@@ -99,7 +104,7 @@ export const TestView: React.FC<TestViewProps> = ({
       window.removeEventListener('keydown', handleKeydown);
       window.removeEventListener('keyup', handleKeyup);
     };
-  }, []);
+  }, [onScreenRecordDetected]);
 
   const currentQuestion = questions[currentIndex];
   const currentAnswer = answers[currentIndex];

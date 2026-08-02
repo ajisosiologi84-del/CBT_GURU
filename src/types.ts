@@ -69,6 +69,7 @@ export interface AppConfig {
   kkm: number; // 0 - 100
   questions: Question[];
   examToken: string; // Token Ujian saat ini
+  updatedAt?: string; // Timestamp ISO update konfigurasi
   students: StudentUser[]; // Daftar user/siswa terdaftar
   teachers?: TeacherUser[]; // Daftar user/guru terdaftar
   mapel?: string; // e.g. 'Sosiologi'

@@ -84,10 +84,16 @@ export default function App() {
 
   // Save config to LocalStorage & Firebase on updates
   const saveConfig = useCallback((newConfig: AppConfig) => {
-    setConfig(newConfig);
+    const activeToken = newConfig.examToken?.trim() || 'SOS2026';
+    const updatedConfig = {
+      ...newConfig,
+      examToken: activeToken,
+      updatedAt: new Date().toISOString(),
+    };
+    setConfig(updatedConfig);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
-      saveConfigToFirebase(newConfig);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedConfig));
+      saveConfigToFirebase(updatedConfig);
     } catch (e) {
       console.error('Failed to save to local storage or Firebase:', e);
     }
@@ -102,14 +108,39 @@ export default function App() {
     }
   }, []);
 
+  // Helper to merge remote config without losing locally updated token
+  const mergeRemoteConfigWithLocalToken = (remoteConfig: AppConfig): AppConfig => {
+    let activeToken = remoteConfig.examToken;
+    try {
+      const localSaved = localStorage.getItem(STORAGE_KEY);
+      if (localSaved) {
+        const parsed = JSON.parse(localSaved);
+        if (parsed && parsed.examToken) {
+          const localTime = parsed.updatedAt ? new Date(parsed.updatedAt).getTime() : 1;
+          const remoteTime = remoteConfig.updatedAt ? new Date(remoteConfig.updatedAt).getTime() : 0;
+
+          // Preserve local token if local config is newer or equal, or if remote token is missing or default
+          if (localTime >= remoteTime || !remoteConfig.examToken || remoteConfig.examToken === 'SOS2026') {
+            activeToken = parsed.examToken;
+          }
+        }
+      }
+    } catch (e) {}
+    return {
+      ...remoteConfig,
+      examToken: activeToken || remoteConfig.examToken || 'SOS2026',
+    };
+  };
+
   // Firebase Synchronization Effect
   useEffect(() => {
     // Initial fetch from Firebase
     loadConfigFromFirebase().then((remoteConfig) => {
       if (remoteConfig && Array.isArray(remoteConfig.questions) && remoteConfig.questions.length > 0) {
-        setConfig(remoteConfig);
+        const merged = mergeRemoteConfigWithLocalToken(remoteConfig);
+        setConfig(merged);
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteConfig));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
         } catch (e) {}
       }
     }).catch(() => {});
@@ -126,9 +157,10 @@ export default function App() {
     // Realtime subscribers
     const unsubConfig = subscribeConfigFromFirebase((remoteConfig) => {
       if (remoteConfig && Array.isArray(remoteConfig.questions) && remoteConfig.questions.length > 0) {
-        setConfig(remoteConfig);
+        const merged = mergeRemoteConfigWithLocalToken(remoteConfig);
+        setConfig(merged);
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteConfig));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
         } catch (e) {}
       }
     });
@@ -477,12 +509,20 @@ export default function App() {
     });
   };
 
+  const handleScreenRecordDetected = (reason: string) => {
+    setIsWarningModalOpen(false);
+    setAlertMsg(
+      `PERINGATAN PEREKAMAN LAYAR TERDETEKSI!\nSistem mendeteksi percobaan Perekaman Layar / Screen Capture ("${reason}").\n\nUntuk menjaga kerahasiaan soal, ujian dihentikan dan SELURUH JAWABAN ANDA TELAH TERSIMPAN AMAN.\nFile tanda bukti (.cbt) berhasil diunduh secara otomatis!`
+    );
+    processSubmission(true, reason);
+  };
+
   // Submit Exam & Save Encrypted Student Result
   const handleFinishExamRequest = () => {
     processSubmission();
   };
 
-  const processSubmission = () => {
+  const processSubmission = (autoDownload = false, customReason = '') => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
@@ -505,6 +545,15 @@ export default function App() {
     const timeSpent = (config.duration * 60) - timeRemaining;
     const durationMins = Math.max(1, Math.round(timeSpent / 60));
 
+    let updatedLogs = [...cheatingLogs];
+    if (customReason) {
+      updatedLogs.push({
+        timestamp: new Date().toLocaleTimeString('id-ID'),
+        type: `AUTO-SUBMIT (Perekaman Layar): ${customReason}`,
+        details: customReason,
+      });
+    }
+
     const resultObj: StudentResult = {
       id: `RES-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       studentInfo,
@@ -515,12 +564,12 @@ export default function App() {
       kkm: config.kkm,
       isPassed,
       answers: userAnswers,
-      warnings,
+      warnings: warnings + (customReason ? 1 : 0),
       submittedAt: new Date().toLocaleString('id-ID'),
       durationSpentMinutes: durationMins,
       timeSpentSeconds: timeSpent,
       questionSnapshots: activeQuestions,
-      cheatingLogs,
+      cheatingLogs: updatedLogs,
       ipAddress,
       deviceInfo,
     };
@@ -536,6 +585,26 @@ export default function App() {
     saveStudentResultToFirebase(resultObj);
 
     setViewState('result');
+
+    if (autoDownload) {
+      setTimeout(() => {
+        try {
+          const encryptedData = encryptResult(resultObj);
+          const blob = new Blob([encryptedData], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          const cleanName = studentInfo.name.replace(/[^a-zA-Z0-9]/g, '_');
+          link.href = url;
+          link.download = `HASIL_CBT_${studentInfo.noPeserta}_${cleanName}.cbt`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error(e);
+        }
+      }, 300);
+    }
   };
 
   // Download Encrypted .cbt File
@@ -699,6 +768,7 @@ export default function App() {
           onPrev={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
           onNext={() => setCurrentIndex((prev) => Math.min(activeQuestions.length - 1, prev + 1))}
           onFinish={handleFinishExamRequest}
+          onScreenRecordDetected={handleScreenRecordDetected}
         />
       )}
 

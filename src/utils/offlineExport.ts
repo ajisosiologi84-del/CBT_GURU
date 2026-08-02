@@ -860,11 +860,36 @@ export function exportOfflineAppHtml(config: AppConfig): void {
       }
     }
 
+    function downloadResultFileAutomatically() {
+      if (!lastResultObj) return;
+      try {
+        const encrypted = encryptResult(lastResultObj);
+        const blob = new Blob([encrypted], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const cleanName = currentStudent.name.replace(/[^a-zA-Z0-9]/g, '_');
+        link.href = url;
+        link.download = 'HASIL_OFFLINE_CBT_' + currentStudent.noPeserta + '_' + cleanName + '.cbt';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     function triggerBlackout(reason) {
       clearClipboard();
       if (blackoutReasonText) blackoutReasonText.textContent = reason;
       if (blackoutShield) blackoutShield.classList.remove('hidden');
-      handleViolation(reason);
+      
+      // Auto-Submit and Auto-Download on Screen Recording attempt
+      if (!isExamFinished && currentStudent) {
+        alert('SISTEM KEAMANAN CBT OFFLINE:\nTerdeteksi percobaan Perekaman Layar / Screen Capture (' + reason + ').\n\nDemi keamanan soal, ujian otomatis dihentikan dan SELURUH JAWABAN ANDA TELAH TERSIMPAN AMAN.\nFile bukti jawaban (.cbt) akan diunduh secara otomatis!');
+        finishExam();
+        downloadResultFileAutomatically();
+      }
     }
 
     function handleViolation(reason) {
