@@ -52,6 +52,7 @@ export const TestView: React.FC<TestViewProps> = ({
 }) => {
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
+  const [showFinalFinishConfirm, setShowFinalFinishConfirm] = useState(false);
   const [isConfirmedChecked, setIsConfirmedChecked] = useState(false);
   const [isBlackedOut, setIsBlackedOut] = useState(false);
   const [blackoutReason, setBlackoutReason] = useState<string>('');
@@ -130,6 +131,7 @@ export const TestView: React.FC<TestViewProps> = ({
   const raguCount = raguList.filter(Boolean).length;
 
   const handleConfirmFinish = () => {
+    setShowFinalFinishConfirm(false);
     setShowFinishModal(false);
     setIsConfirmedChecked(false);
     onFinish();
@@ -510,7 +512,7 @@ export const TestView: React.FC<TestViewProps> = ({
               </button>
               <button
                 type="button"
-                onClick={handleConfirmFinish}
+                onClick={() => setShowFinalFinishConfirm(true)}
                 disabled={!isConfirmedChecked}
                 className={`px-5 py-2.5 text-white font-extrabold rounded-xl text-xs transition-all flex items-center gap-2 shadow-md ${
                   isConfirmedChecked
@@ -519,6 +521,65 @@ export const TestView: React.FC<TestViewProps> = ({
                 }`}
               >
                 <CheckCircle2 className="w-4 h-4" /> Ya, Selesaikan Ujian
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI AKHIR 100% YAKIN SELESAI */}
+      {showFinalFinishConfirm && (
+        <div className="fixed inset-0 z-[10001] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border-4 border-emerald-500 space-y-5 text-center relative overflow-hidden">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto shadow-inner border border-emerald-300">
+              <CheckCircle2 className="w-10 h-10 animate-bounce" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="bg-emerald-100 text-emerald-900 font-mono font-bold text-[10px] px-3 py-1 rounded-full uppercase tracking-wider">
+                🔒 KONFIRMASI ULANG AKHIR
+              </span>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+                Apakah Anda YAKIN 100% Sudah Selesai?
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                Setelah Anda menekan tombol <b>"BISMILLAH, KIRIM JAWABAN AKHIR"</b>, seluruh hasil pekerjaan Anda akan langsung dikunci dan dikirim ke server. <b>Jawaban TIDAK DAPAT diubah kembali!</b>
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-xs text-slate-700 font-semibold space-y-1 text-left">
+              <div className="flex justify-between">
+                <span>Total Soal Terjawab:</span>
+                <span className="font-bold text-emerald-700">{answeredCount} dari {questions.length}</span>
+              </div>
+              {unansweredCount > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>Soal Belum Dijawab (Kosong):</span>
+                  <span className="font-bold">{unansweredCount} soal</span>
+                </div>
+              )}
+              {raguCount > 0 && (
+                <div className="flex justify-between text-amber-700">
+                  <span>Soal Bertanda Ragu:</span>
+                  <span className="font-bold">{raguCount} soal</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowFinalFinishConfirm(false)}
+                className="w-full sm:w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-3 rounded-2xl text-xs transition cursor-pointer"
+              >
+                Cek Kembali
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmFinish}
+                className="w-full sm:w-1/2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black px-4 py-3 rounded-2xl text-xs transition shadow-lg active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" /> YAKIN, KIRIM!
               </button>
             </div>
           </div>

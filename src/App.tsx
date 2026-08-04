@@ -435,18 +435,41 @@ export default function App() {
   // Security & Anti-Cheat Handlers (Mobile & Desktop Compatible)
   const playWarningSound = () => {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.6);
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const audioCtx = new AudioCtx();
+        const now = audioCtx.currentTime;
+
+        // Dual-Tone Siren Sound Wave (800Hz & 500Hz alternating sweeps)
+        const playSirenPulse = (freq1: number, freq2: number, startTime: number, duration: number) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq1, startTime);
+          osc.frequency.exponentialRampToValueAtTime(freq2, startTime + duration * 0.8);
+          gain.gain.setValueAtTime(0.5, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
+
+        playSirenPulse(850, 450, now, 0.25);
+        playSirenPulse(950, 500, now + 0.25, 0.25);
+        playSirenPulse(850, 400, now + 0.50, 0.35);
+      }
+
+      // Voice Warning Announcement via Web Speech API
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance('Peringatan! Pelanggaran ujian terdeteksi!');
+        utterance.lang = 'id-ID';
+        utterance.rate = 1.1;
+        utterance.pitch = 1.2;
+        utterance.volume = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
     } catch (e) {
       console.warn('Audio warning sound not supported or blocked', e);
     }
@@ -521,7 +544,8 @@ export default function App() {
         (e.altKey && e.key === 'Tab')
       ) {
         e.preventDefault();
-        showAlert('Peringatan Keamanan: Penggunaan Shortcut Keyboard dilarang!');
+        playWarningSound();
+        showAlert('🚨 Peringatan Keamanan: Penggunaan Shortcut Keyboard dilarang!');
       }
     };
 
@@ -563,6 +587,7 @@ export default function App() {
 
   const handleScreenRecordDetected = (reason: string) => {
     setIsWarningModalOpen(false);
+    playWarningSound();
     setAlertMsg(
       `PERINGATAN PEREKAMAN LAYAR TERDETEKSI!\nSistem mendeteksi percobaan Perekaman Layar / Screen Capture ("${reason}").\n\nUntuk menjaga kerahasiaan soal, ujian dihentikan dan SELURUH JAWABAN ANDA TELAH TERSIMPAN AMAN.\nFile tanda bukti (.cbt) berhasil diunduh secara otomatis!`
     );
