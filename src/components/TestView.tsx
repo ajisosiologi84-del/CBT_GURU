@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Question, BroadcastAlert } from '../types';
 import { formatQuestionText } from '../utils/questionFormatter';
-import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X, CheckCircle2, ShieldAlert, Lock, Megaphone, Bell, AlertTriangle } from 'lucide-react';
+import { BookOpen, Clock, Flag, ChevronLeft, ChevronRight, Brain, Grid, X, CheckCircle2, ShieldAlert, Lock, Megaphone, Bell, AlertTriangle, ArrowLeft, Home } from 'lucide-react';
 
 interface TestViewProps {
   questions: Question[];
@@ -25,6 +25,7 @@ interface TestViewProps {
   onNext: () => void;
   onFinish: () => void;
   onScreenRecordDetected?: (reason: string) => void;
+  onBackToPortal?: () => void;
 }
 
 export const TestView: React.FC<TestViewProps> = ({
@@ -49,10 +50,12 @@ export const TestView: React.FC<TestViewProps> = ({
   onNext,
   onFinish,
   onScreenRecordDetected,
+  onBackToPortal,
 }) => {
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [showFinalFinishConfirm, setShowFinalFinishConfirm] = useState(false);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [isConfirmedChecked, setIsConfirmedChecked] = useState(false);
   const [isBlackedOut, setIsBlackedOut] = useState(false);
   const [blackoutReason, setBlackoutReason] = useState<string>('');
@@ -172,9 +175,20 @@ export const TestView: React.FC<TestViewProps> = ({
   return (
     <div className="h-screen flex flex-col bg-slate-100 overflow-hidden">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 px-3 sm:px-6 py-2.5 sm:py-3 flex justify-between items-center shrink-0 z-20">
-        <div className="flex items-center gap-2.5 sm:gap-4 min-w-0">
-          <div className="bg-blue-600 text-white w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl font-bold shadow-md shadow-blue-200 shrink-0">
+      <header className="bg-white shadow-sm border-b border-gray-200 px-2.5 sm:px-6 py-2 sm:py-2.5 flex justify-between items-center shrink-0 z-20 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+          {/* Tombol Kembali ke Halaman Utama (Touch friendly for Mobile, Tablet, Desktop) */}
+          <button
+            onClick={() => setShowExitConfirmModal(true)}
+            className="min-h-[42px] bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 px-2.5 sm:px-3.5 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-slate-300 shrink-0 active:scale-95 shadow-2xs group"
+            title="Kembali ke Halaman Utama / Portal Login"
+          >
+            <ArrowLeft className="w-4 h-4 text-slate-700 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="hidden lg:inline">Kembali ke Utama</span>
+            <span className="hidden sm:inline lg:hidden">Utama</span>
+          </button>
+
+          <div className="bg-blue-600 text-white w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl font-bold shadow-md shadow-blue-200 shrink-0">
             <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0">
@@ -187,11 +201,11 @@ export const TestView: React.FC<TestViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Mobile Grid Drawer Toggle */}
           <button
             onClick={() => setShowMobileNav(true)}
-            className="lg:hidden bg-blue-50 border border-blue-200 text-blue-700 px-2.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all"
+            className="lg:hidden bg-blue-50 border border-blue-200 text-blue-700 px-2.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1 active:scale-95 transition-all min-h-[42px]"
             title="Buka Navigasi Soal"
           >
             <Grid className="w-4 h-4 text-blue-600" />
@@ -199,7 +213,7 @@ export const TestView: React.FC<TestViewProps> = ({
           </button>
 
           {/* Status Peringatan Pelanggaran Badge */}
-          <div className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold ${
+          <div className={`px-2 sm:px-3 py-1.5 rounded-xl border flex items-center gap-1 text-xs font-bold min-h-[42px] ${
             warnings > 0
               ? 'bg-amber-50 text-amber-900 border-amber-300'
               : 'bg-emerald-50 text-emerald-800 border-emerald-200'
@@ -210,13 +224,13 @@ export const TestView: React.FC<TestViewProps> = ({
           </div>
 
           {/* Timer Display */}
-          <div className="bg-slate-100 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-xl border border-slate-200 flex items-center gap-2 sm:gap-3">
+          <div className="bg-slate-100 px-2 sm:px-3.5 py-1 sm:py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5 sm:gap-2.5 min-h-[42px]">
             <Clock className={`w-4 h-4 sm:w-5 sm:h-5 ${isTimeCritical ? 'text-red-500 animate-pulse' : 'text-slate-500'}`} />
             <div>
               <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400 leading-none hidden sm:block">
                 Sisa Waktu
               </p>
-              <p className={`font-mono font-bold text-xs sm:text-lg ${isTimeCritical ? 'text-red-600 animate-pulse' : 'text-slate-800'}`}>
+              <p className={`font-mono font-bold text-xs sm:text-base ${isTimeCritical ? 'text-red-600 animate-pulse' : 'text-slate-800'}`}>
                 {formatTime(timeRemaining)}
               </p>
             </div>
@@ -224,7 +238,7 @@ export const TestView: React.FC<TestViewProps> = ({
 
           <button
             onClick={() => setShowFinishModal(true)}
-            className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold text-xs transition-all shadow-md flex items-center gap-1.5 active:scale-95 shrink-0 cursor-pointer"
+            className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white px-3 sm:px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-md flex items-center gap-1.5 active:scale-95 shrink-0 cursor-pointer min-h-[42px]"
           >
             <Flag className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Selesaikan Ujian</span><span className="sm:hidden">Selesai</span>
           </button>
@@ -370,12 +384,24 @@ export const TestView: React.FC<TestViewProps> = ({
           </div>
 
           <div className="p-5">{renderNavGrid()}</div>
+          
+          {onBackToPortal && (
+            <div className="p-4 border-t border-gray-200 mt-auto bg-slate-50">
+              <button
+                onClick={() => setShowExitConfirmModal(true)}
+                className="w-full min-h-[44px] bg-white hover:bg-slate-100 text-slate-700 font-bold py-2.5 px-4 rounded-xl border border-slate-300 transition-all text-xs flex items-center justify-center gap-2 active:scale-98 cursor-pointer shadow-2xs"
+              >
+                <Home className="w-4 h-4 text-slate-600" />
+                Kembali ke Halaman Utama
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Mobile Navigation Drawer Modal Overlay */}
         {showMobileNav && (
           <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-end bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-            <div className="bg-white rounded-t-3xl p-5 max-h-[80vh] flex flex-col shadow-2xl border-t border-slate-200 animate-slide-up">
+            <div className="bg-white rounded-t-3xl p-5 max-h-[85vh] flex flex-col shadow-2xl border-t border-slate-200 animate-slide-up">
               <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <Grid className="w-5 h-5 text-blue-600" />
@@ -386,7 +412,7 @@ export const TestView: React.FC<TestViewProps> = ({
                 </div>
                 <button
                   onClick={() => setShowMobileNav(false)}
-                  className="p-1.5 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-95 transition-all"
+                  className="p-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-95 transition-all min-w-[36px] min-h-[36px] flex items-center justify-center"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -405,10 +431,68 @@ export const TestView: React.FC<TestViewProps> = ({
               </div>
 
               <div className="overflow-y-auto flex-1 p-1 custom-scrollbar">{renderNavGrid()}</div>
+
+              {onBackToPortal && (
+                <div className="pt-3 border-t border-slate-100 mt-3">
+                  <button
+                    onClick={() => {
+                      setShowMobileNav(false);
+                      setShowExitConfirmModal(true);
+                    }}
+                    className="w-full min-h-[48px] bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold py-3 px-4 rounded-xl transition-all border border-slate-300 flex items-center justify-center gap-2 text-xs cursor-pointer active:scale-98 shadow-xs"
+                  >
+                    <ArrowLeft className="w-4 h-4 text-slate-700" />
+                    Kembali ke Halaman Utama / Portal
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
       </main>
+
+      {/* MODAL KONFIRMASI KEMBALI KE HALAMAN UTAMA */}
+      {showExitConfirmModal && (
+        <div className="fixed inset-0 z-[10000] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 relative overflow-hidden text-center">
+            <div className="w-14 h-14 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center mx-auto shadow-inner border border-blue-200">
+              <Home className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug">
+                Kembali ke Halaman Utama?
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
+                Apakah Anda yakin ingin keluar dari layar ujian dan kembali ke halaman utama / portal login?
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-left text-xs text-amber-900 mt-2">
+                💡 <b>Informasi:</b> Seluruh jawaban yang telah diisi sejauh ini ({answeredCount} dari {questions.length} soal) tersimpan secara otomatis.
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowExitConfirmModal(false)}
+                className="w-full sm:w-1/2 min-h-[44px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer shadow-md active:scale-95 flex items-center justify-center"
+              >
+                Lanjutkan Ujian
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExitConfirmModal(false);
+                  if (onBackToPortal) onBackToPortal();
+                }}
+                className="w-full sm:w-1/2 min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold px-4 py-2.5 rounded-xl text-xs border border-slate-300 transition cursor-pointer active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <ArrowLeft className="w-4 h-4 text-slate-700" /> Ya, Kembali
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL KONFIRMASI SELESAI UJIAN */}
       {showFinishModal && (

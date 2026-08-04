@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppConfig, StudentInfo } from '../types';
-import { BookOpen, Clock, ShieldAlert, PlayCircle, CheckCircle2, Award, WifiOff, Wifi, AlertTriangle, RefreshCw, ArrowRight, X } from 'lucide-react';
+import { BookOpen, Clock, ShieldAlert, PlayCircle, CheckCircle2, Award, WifiOff, Wifi, AlertTriangle, RefreshCw, ArrowRight, X, ArrowLeft } from 'lucide-react';
 
 interface PreTestViewProps {
   config: AppConfig;
@@ -57,21 +57,23 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
     <div className="flex-1 flex items-center justify-center bg-slate-100 fixed inset-0 z-40 p-3 sm:p-6 overflow-y-auto custom-scrollbar">
       <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl my-auto overflow-hidden border border-gray-100 animate-fade-in flex flex-col max-h-[95vh]">
         {/* Header */}
-        <div className="border-b border-gray-100 p-4 sm:p-6 bg-slate-50 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="border-b border-gray-100 p-4 sm:p-6 bg-slate-50 flex justify-between items-center shrink-0 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="p-2 sm:p-2.5 bg-blue-100 text-blue-700 rounded-xl shrink-0">
               <Award className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-xl font-bold text-slate-800">Konfirmasi Data Peserta</h2>
-              <p className="text-[10px] sm:text-xs text-gray-500">Sistem CBT Assessment TKA SMA 2026</p>
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-bold text-slate-800 truncate">Konfirmasi Data Peserta</h2>
+              <p className="text-[10px] sm:text-xs text-gray-500 truncate">Sistem CBT Assessment TKA SMA 2026</p>
             </div>
           </div>
           <button
             onClick={onBackToPortal}
-            className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+            className="min-h-[44px] px-3 sm:px-4 py-2 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 rounded-xl text-xs sm:text-sm font-extrabold border border-slate-300 transition-all cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95 shadow-2xs"
+            title="Kembali ke Halaman Utama / Portal"
           >
-            Kembali ke Portal
+            <ArrowLeft className="w-4 h-4 text-slate-700 shrink-0" />
+            <span className="hidden sm:inline">Kembali ke </span>Utama
           </button>
         </div>
 
@@ -185,9 +187,10 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={onBackToPortal}
-              className="w-full sm:w-1/3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3.5 px-4 rounded-2xl transition-all cursor-pointer text-sm sm:text-base"
+              className="w-full sm:w-1/3 min-h-[48px] bg-slate-200 hover:bg-slate-300 active:bg-slate-400 text-slate-800 font-extrabold py-3 px-4 rounded-2xl transition-all cursor-pointer text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 shadow-2xs border border-slate-300"
             >
-              Kembali ke Portal
+              <ArrowLeft className="w-4 h-4 text-slate-700 shrink-0" />
+              <span>Kembali ke Utama</span>
             </button>
             <button
               onClick={handleStartButtonClick}

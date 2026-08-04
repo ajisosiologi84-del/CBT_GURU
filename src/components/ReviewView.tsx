@@ -13,18 +13,20 @@ export const ReviewView: React.FC<ReviewViewProps> = ({ questions, answers, onEx
   return (
     <div className="flex-1 flex flex-col h-screen bg-slate-100 fixed inset-0 z-50 overflow-hidden">
       {/* Header */}
-      <header className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shrink-0 shadow-md">
-        <div>
-          <h1 className="font-bold text-xl flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-amber-400" /> Pembahasan Ilmiah Sosiologi
+      <header className="bg-slate-900 text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shrink-0 shadow-md gap-2">
+        <div className="min-w-0">
+          <h1 className="font-bold text-base sm:text-xl flex items-center gap-2 truncate">
+            <BookOpen className="w-5 h-5 text-amber-400 shrink-0" /> Pembahasan Ilmiah Sosiologi
           </h1>
-          <p className="text-slate-300 text-xs mt-0.5">Analisis HOTS - Perubahan Sosial & Globalisasi</p>
+          <p className="text-slate-300 text-[10px] sm:text-xs mt-0.5 truncate hidden sm:block">Analisis HOTS - Perubahan Sosial & Globalisasi</p>
         </div>
         <button
           onClick={onExit}
-          className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-xl font-bold transition-all text-sm flex items-center gap-2 border border-slate-700 active:scale-95"
+          className="min-h-[44px] bg-slate-800 hover:bg-slate-700 active:bg-slate-950 px-3.5 py-2 rounded-xl font-extrabold transition-all text-xs sm:text-sm flex items-center gap-1.5 border border-slate-700 active:scale-95 shrink-0 cursor-pointer shadow-xs"
+          title="Kembali ke Halaman Utama / Portal"
         >
-          <LogOut className="w-4 h-4" /> Keluar
+          <LogOut className="w-4 h-4 text-amber-400 shrink-0" />
+          <span className="hidden sm:inline">Kembali ke </span>Utama
         </button>
       </header>
 

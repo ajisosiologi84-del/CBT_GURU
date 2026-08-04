@@ -98,6 +98,8 @@ export interface AppConfig {
   adminPassword?: string; // Password Admin Utama (default: 'JuniorCBT2026')
   driveUploadUrl?: string; // Link Google Drive untuk Upload Hasil Jawaban Siswa
   youtubeGuideUrl?: string; // Link Video YouTube Panduan Guru (dikeloa Admin)
+  customWarningAudioUrl?: string; // URL Audio MP3 Peringatan Kecurangan
+  enableWarningAudio?: boolean; // Sakelar Suara Audio Peringatan (default true)
   examSchedule?: ExamScheduleConfig; // Detail Pengaturan Jadwal & Ketentuan Ujian
   broadcastAlert?: BroadcastAlert | null; // Pesan Peringatan Broadcast Proktor Real-time
 }

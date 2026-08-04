@@ -117,9 +117,10 @@ export const ResultView: React.FC<ResultViewProps> = ({
         <div className="space-y-2 pt-1">
           <button
             onClick={onRestart}
-            className="w-full bg-slate-800 hover:bg-slate-900 active:bg-slate-950 text-white font-bold py-3.5 px-5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-xs cursor-pointer active:scale-98"
+            className="w-full min-h-[48px] bg-slate-900 hover:bg-slate-950 active:bg-black text-white font-extrabold py-3.5 px-5 rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-98"
           >
-            <LogOut className="w-4 h-4" /> Keluar dari Aplikasi (Kembali ke Halaman Utama)
+            <LogOut className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Keluar dari Aplikasi (Kembali ke Halaman Utama)</span>
           </button>
         </div>
 

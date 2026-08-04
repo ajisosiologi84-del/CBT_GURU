@@ -433,21 +433,37 @@ export default function App() {
   }, [config, viewState, studentInfo.noPeserta]);
 
   // Security & Anti-Cheat Handlers (Mobile & Desktop Compatible)
-  const playWarningSound = () => {
+  const playWarningSound = useCallback(() => {
+    if (config.enableWarningAudio === false) return;
+
     try {
+      // 1. Play MP3 Warning Alarm Sound
+      const mp3Url = config.customWarningAudioUrl || '/warning-alarm.mp3';
+      const audio = new Audio(mp3Url);
+      audio.volume = 1.0;
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('MP3 warning audio autoplay failed or restricted:', err);
+        });
+      }
+
+      // 2. Dual-Tone Siren Sound Wave (800Hz & 500Hz alternating sweeps)
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
         const audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
         const now = audioCtx.currentTime;
 
-        // Dual-Tone Siren Sound Wave (800Hz & 500Hz alternating sweeps)
         const playSirenPulse = (freq1: number, freq2: number, startTime: number, duration: number) => {
           const osc = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
           osc.type = 'sawtooth';
           osc.frequency.setValueAtTime(freq1, startTime);
           osc.frequency.exponentialRampToValueAtTime(freq2, startTime + duration * 0.8);
-          gain.gain.setValueAtTime(0.5, startTime);
+          gain.gain.setValueAtTime(0.6, startTime);
           gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
           osc.connect(gain);
           gain.connect(audioCtx.destination);
@@ -460,10 +476,10 @@ export default function App() {
         playSirenPulse(850, 400, now + 0.50, 0.35);
       }
 
-      // Voice Warning Announcement via Web Speech API
+      // 3. Voice Warning Announcement via Web Speech API
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance('Peringatan! Pelanggaran ujian terdeteksi!');
+        const utterance = new SpeechSynthesisUtterance('Peringatan! Pelanggaran kecurangan ujian terdeteksi! Dilarang berpindah layar atau membuka aplikasi lain!');
         utterance.lang = 'id-ID';
         utterance.rate = 1.1;
         utterance.pitch = 1.2;
@@ -473,7 +489,7 @@ export default function App() {
     } catch (e) {
       console.warn('Audio warning sound not supported or blocked', e);
     }
-  };
+  }, [config.enableWarningAudio, config.customWarningAudioUrl]);
 
   const handleTriggerWarning = useCallback(
     (customMsg?: string) => {
@@ -506,7 +522,7 @@ export default function App() {
         return nextWarnings;
       });
     },
-    [viewState, isWarningModalOpen, maxWarnings]
+    [viewState, isWarningModalOpen, maxWarnings, playWarningSound]
   );
 
   const triggerAutoSubmit = (msg: string) => {
@@ -850,6 +866,7 @@ export default function App() {
           onNext={() => setCurrentIndex((prev) => Math.min(activeQuestions.length - 1, prev + 1))}
           onFinish={handleFinishExamRequest}
           onScreenRecordDetected={handleScreenRecordDetected}
+          onBackToPortal={() => setViewState('login')}
         />
       )}
 

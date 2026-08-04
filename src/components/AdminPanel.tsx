@@ -73,6 +73,8 @@ import {
   Megaphone,
   Send,
   Radio,
+  Volume2,
+  VolumeX,
   AlertOctagon,
 } from 'lucide-react';
 
@@ -151,6 +153,52 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showScoreImmediately, setShowScoreImmediately] = useState<boolean>(config.examSchedule?.showScoreImmediately !== false);
   const [strictAntiCheating, setStrictAntiCheating] = useState<boolean>(config.examSchedule?.strictAntiCheating !== false);
   const [maxCheatingAllowed, setMaxCheatingAllowed] = useState<number>(config.examSchedule?.maxCheatingAllowed || 3);
+  const [enableWarningAudio, setEnableWarningAudio] = useState<boolean>(config.enableWarningAudio !== false);
+  const [customWarningAudioUrl, setCustomWarningAudioUrl] = useState<string>(config.customWarningAudioUrl || '');
+
+  // Test Play Warning Audio MP3
+  const handleTestWarningAudio = () => {
+    try {
+      const mp3Url = customWarningAudioUrl.trim() || '/warning-alarm.mp3';
+      const audio = new Audio(mp3Url);
+      audio.volume = 1.0;
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          showAlert('Suara MP3 diblokir oleh browser atau URL tidak dapat diakses: ' + err.message);
+        });
+      }
+
+      // Voice warning speech test
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance('Peringatan! Pelanggaran kecurangan ujian terdeteksi!');
+        utterance.lang = 'id-ID';
+        utterance.rate = 1.1;
+        window.speechSynthesis.speak(utterance);
+      }
+      showAlert('🔊 Memutar Uji Coba Audio Peringatan Kecurangan MP3 & Suara Sirine...');
+    } catch (e) {
+      showAlert('Gagal memutar audio: ' + (e as Error).message);
+    }
+  };
+
+  const handleFileUploadMP3 = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showAlert('Ukuran file audio MP3 terlalu besar! Maksimal 10MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setCustomWarningAudioUrl(event.target.result as string);
+        showAlert('File Audio MP3 Peringatan berhasil diunggah!');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Broadcast Warning Proktor State (Point 2)
   const [broadcastTargetNis, setBroadcastTargetNis] = useState<string>('ALL');
@@ -556,6 +604,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       maxAttempts: Math.max(1, maxAttemptsInput),
       randomizeQuestions: randomizeQuestionsInput,
       randomizeOptions: randomizeOptionsInput,
+      enableWarningAudio,
+      customWarningAudioUrl: customWarningAudioUrl.trim() || undefined,
       examSchedule: {
         startTime: scheduleStartTime,
         endTime: scheduleEndTime,
@@ -4579,6 +4629,60 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <span className="text-xs text-orange-900 font-medium">
                       Kali peringatan (default: 3x violation sebelum dihentikan paksa).
                     </span>
+                  </div>
+                </div>
+
+                {/* Audio Peringatan MP3 Box */}
+                <div className="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-4 space-y-3 mt-3 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Volume2 className="w-5 h-5 text-amber-700 animate-pulse" />
+                      <h4 className="font-extrabold text-sm text-amber-950 uppercase tracking-wider">
+                        Audio Peringatan Kecurangan Siswa (Format MP3)
+                      </h4>
+                    </div>
+                    <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-amber-300 cursor-pointer shadow-2xs self-start sm:self-auto">
+                      <span className="text-xs font-bold text-slate-800">Aktifkan Suara Audio</span>
+                      <input
+                        type="checkbox"
+                        checked={enableWarningAudio}
+                        onChange={(e) => setEnableWarningAudio(e.target.checked)}
+                        className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+
+                  <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                    Sistem akan memutar secara otomatis <b>Audio Alarm MP3 Peringatan Kecurangan</b>, Sirine dual-tone, dan Pengumuman Suara saat siswa kedapatan berpindah tab, keluar mode fullscreen, menekan shortcut keyboard, atau merekam layar.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center pt-1">
+                    <button
+                      type="button"
+                      onClick={handleTestWarningAudio}
+                      className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-black px-4 py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-md active:scale-95 cursor-pointer shrink-0"
+                    >
+                      <Volume2 className="w-4 h-4" /> Uji Coba Suara Audio MP3
+                    </button>
+
+                    <div className="flex-1 flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={customWarningAudioUrl}
+                        onChange={(e) => setCustomWarningAudioUrl(e.target.value)}
+                        placeholder="Default (/warning-alarm.mp3) atau masukkan URL MP3 kustom..."
+                        className="flex-1 bg-white border border-amber-300 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                      />
+                      <label className="bg-white hover:bg-amber-100 text-amber-900 border border-amber-400 font-bold px-3 py-2 rounded-xl text-xs cursor-pointer transition flex items-center gap-1 shrink-0">
+                        <Upload className="w-3.5 h-3.5" /> Upload File MP3
+                        <input
+                          type="file"
+                          accept="audio/mp3,audio/*"
+                          onChange={handleFileUploadMP3}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
