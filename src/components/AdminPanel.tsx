@@ -61,6 +61,7 @@ import {
   Activity,
   Zap,
   Tag,
+  Layers,
   ArrowRight,
   ChevronRight,
   CheckCircle2,
@@ -211,6 +212,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // Question Selection & Batch State
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
   const [selectedBankMapel, setSelectedBankMapel] = useState<string>('ALL');
+  const [selectedBankKompetensi, setSelectedBankKompetensi] = useState<string>('ALL');
+  const [selectedBankBentukSoal, setSelectedBankBentukSoal] = useState<string>('ALL');
   const [selectedBankKodeGuru, setSelectedBankKodeGuru] = useState<string>('ALL');
 
   // Excel Template Upload Modal State
@@ -809,7 +812,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleDownloadTemplate = () => {
     const currentMapel = selectedBankMapel !== 'ALL' ? selectedBankMapel : mapelInput || config.mapel || 'Sosiologi';
     const ws_data = [
-      ['Pertanyaan', 'Opsi_A', 'Opsi_B', 'Opsi_C', 'Opsi_D', 'Opsi_E', 'Kunci_Jawaban', 'Pembahasan', 'Mapel', 'Sub_Topik'],
+      ['Pertanyaan', 'Opsi_A', 'Opsi_B', 'Opsi_C', 'Opsi_D', 'Opsi_E', 'Kunci_Jawaban', 'Pembahasan', 'Mapel', 'Kompetensi', 'Bentuk_Soal'],
       [
         `Contoh Soal (${currentMapel}): Perubahan sosial di masyarakat dipengaruhi oleh faktor...`,
         'Globalisasi',
@@ -820,7 +823,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         'A',
         'Pembahasan mengenai faktor pendorong perubahan sosial.',
         currentMapel,
-        'Perubahan Sosial & Teknologi',
+        '3.1 Perubahan Sosial & Teknologi',
+        'Pilihan Ganda',
       ],
       [
         `Contoh Soal 2 (${currentMapel}): Masuknya budaya asing yang diterima tanpa menghilangkan budaya asli disebut...`,
@@ -832,7 +836,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         'B',
         'Akulturasi adalah percampuran dua budaya di mana unsur budaya asli masih terlihat.',
         currentMapel,
-        'Globalisasi & Glokalisasi',
+        '3.2 Globalisasi & Glokalisasi',
+        'Pilihan Ganda',
       ],
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
@@ -869,7 +874,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           const key = (row['Kunci_Jawaban'] || row['kunci_jawaban'] || row['Kunci'] || '').toString().trim().toUpperCase();
           const exp = row['Pembahasan'] || row['pembahasan'] || 'Tidak ada pembahasan.';
           const rowMapel = row['Mapel'] || row['Mata_Pelajaran'] || row['mapel'];
-          const rowSubTopik = row['Sub_Topik'] || row['sub_topik'] || row['SubTopik'] || row['subtopik'] || row['Materi'] || row['materi'];
+          const rowKompetensi = row['Kompetensi'] || row['kompetensi'] || row['KD'] || row['Sub_Topik'] || row['sub_topik'] || row['SubTopik'] || row['subtopik'] || row['Materi'] || row['materi'];
+          const rowBentuk = row['Bentuk_Soal'] || row['bentuk_soal'] || row['BentukSoal'] || row['Bentuk Soal'] || 'Pilihan Ganda';
           const rowImg = row['Gambar'] || row['gambar'] || row['URL_Gambar'] || row['url_gambar'] || row['Image'] || row['image'];
 
           if (rowMapel && !detectedMapel) {
@@ -883,7 +889,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               explanation: exp,
               image: rowImg ? String(rowImg).trim() : undefined,
               mapel: rowMapel ? String(rowMapel).trim() : 'Sosiologi',
-              subTopik: rowSubTopik ? String(rowSubTopik).trim() : undefined,
+              kompetensi: rowKompetensi ? String(rowKompetensi).trim() : undefined,
+              subTopik: rowKompetensi ? String(rowKompetensi).trim() : undefined,
+              bentukSoal: rowBentuk ? String(rowBentuk).trim() : 'Pilihan Ganda',
               options: [
                 { id: 'A', text: String(optA), isCorrect: key === 'A' },
                 { id: 'B', text: String(optB), isCorrect: key === 'B' },
@@ -1448,21 +1456,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     ])
   ) as string[];
 
+  const availableKompetensis = Array.from(
+    new Set(
+      config.questions
+        .map((q) => (q.kompetensi || q.subTopik || '').trim())
+        .filter((k): k is string => Boolean(k))
+    )
+  ).sort();
+
+  const availableBentukSoals = Array.from(
+    new Set([
+      'Pilihan Ganda',
+      'Pilihan Ganda Kompleks',
+      'Menjodohkan',
+      'Isian Singkat',
+      'Uraian',
+      ...config.questions
+        .map((q) => (q.bentukSoal || '').trim())
+        .filter((b): b is string => Boolean(b)),
+    ])
+  );
+
   const filteredQuestions = config.questions.filter((q) => {
     const query = searchQuery.toLowerCase();
+    const qKomp = (q.kompetensi || q.subTopik || '').toLowerCase();
+    const qBentuk = (q.bentukSoal || 'Pilihan Ganda').toLowerCase();
+    const qMapel = (q.mapel || config.mapel || 'Sosiologi').toLowerCase();
+
     const matchesSearch =
       q.question.toLowerCase().includes(query) ||
-      (q.subTopik && q.subTopik.toLowerCase().includes(query));
+      qKomp.includes(query) ||
+      qBentuk.includes(query) ||
+      qMapel.includes(query);
+
     const matchesMapel =
       selectedBankMapel === 'ALL' ||
       !q.mapel ||
       q.mapel === selectedBankMapel;
+
+    const matchesKompetensi =
+      selectedBankKompetensi === 'ALL' ||
+      (q.kompetensi || q.subTopik || '') === selectedBankKompetensi;
+
+    const matchesBentukSoal =
+      selectedBankBentukSoal === 'ALL' ||
+      (q.bentukSoal || 'Pilihan Ganda') === selectedBankBentukSoal;
+
     const qKodeGuru = (q.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase();
     const matchesKodeGuru =
       selectedBankKodeGuru === 'ALL' ||
       qKodeGuru === selectedBankKodeGuru.toUpperCase();
 
-    return matchesSearch && matchesMapel && matchesKodeGuru;
+    return matchesSearch && matchesMapel && matchesKompetensi && matchesBentukSoal && matchesKodeGuru;
   });
 
   const filteredStudentResults = studentResults.filter((r) => {
@@ -3033,16 +3078,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-            {/* Filter & Selector Bar for Mata Pelajaran & Kode Guru */}
-            <div className="bg-slate-100 p-3 rounded-xl border border-slate-200 mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
-              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                <div className="flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4 text-sky-600 shrink-0" />
-                  <span className="font-bold text-slate-700 whitespace-nowrap">Mapel:</span>
+            {/* Filter & Selector Bar for Mata Pelajaran, Kompetensi, Bentuk Soal & Kode Guru */}
+            <div className="bg-slate-100 p-3.5 rounded-2xl border border-slate-200 mb-3 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-2">
+                <span className="font-extrabold text-xs text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                  <Sliders className="w-4 h-4 text-blue-600" /> Filter & Pilih Soal
+                </span>
+                <span className="text-[11px] font-bold text-slate-600 bg-white px-2.5 py-0.5 rounded-full border border-slate-200 shadow-xs self-start sm:self-auto">
+                  Tampil <b className="text-blue-600">{filteredQuestions.length}</b> Soal (dari {config.questions.length} Total)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+                {/* 1. Filter Mata Pelajaran */}
+                <div className="flex flex-col gap-1">
+                  <label className="font-bold text-slate-700 text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <BookOpen className="w-3.5 h-3.5 text-sky-600" /> Mata Pelajaran:
+                  </label>
                   <select
                     value={selectedBankMapel}
                     onChange={(e) => setSelectedBankMapel(e.target.value)}
-                    className="bg-white border border-slate-300 text-slate-800 font-bold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-sky-500 focus:outline-none cursor-pointer"
+                    className="bg-white border border-slate-300 text-slate-800 font-bold text-xs rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-sky-500 focus:outline-none cursor-pointer"
                   >
                     <option value="ALL">Semua Mapel ({config.questions.length})</option>
                     {mapelList.map((m) => {
@@ -3058,13 +3114,63 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </select>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <GraduationCap className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="font-bold text-slate-700 whitespace-nowrap">Kode Guru:</span>
+                {/* 2. Filter Kompetensi / KD */}
+                <div className="flex flex-col gap-1">
+                  <label className="font-bold text-slate-700 text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <Tag className="w-3.5 h-3.5 text-amber-600" /> Kompetensi / KD:
+                  </label>
+                  <select
+                    value={selectedBankKompetensi}
+                    onChange={(e) => setSelectedBankKompetensi(e.target.value)}
+                    className="bg-white border border-amber-300 text-amber-950 font-bold text-xs rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL">Semua Kompetensi ({availableKompetensis.length})</option>
+                    {availableKompetensis.map((k) => {
+                      const count = config.questions.filter(
+                        (q) => (q.kompetensi || q.subTopik || '') === k
+                      ).length;
+                      return (
+                        <option key={k} value={k}>
+                          {k} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* 3. Filter Bentuk Soal */}
+                <div className="flex flex-col gap-1">
+                  <label className="font-bold text-slate-700 text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <Layers className="w-3.5 h-3.5 text-purple-600" /> Bentuk Soal:
+                  </label>
+                  <select
+                    value={selectedBankBentukSoal}
+                    onChange={(e) => setSelectedBankBentukSoal(e.target.value)}
+                    className="bg-white border border-purple-300 text-purple-950 font-bold text-xs rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL">Semua Bentuk Soal</option>
+                    {availableBentukSoals.map((b) => {
+                      const count = config.questions.filter(
+                        (q) => (q.bentukSoal || 'Pilihan Ganda') === b
+                      ).length;
+                      return (
+                        <option key={b} value={b}>
+                          {b} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* 4. Filter Kode Guru */}
+                <div className="flex flex-col gap-1">
+                  <label className="font-bold text-slate-700 text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <GraduationCap className="w-3.5 h-3.5 text-emerald-600" /> Kode Guru:
+                  </label>
                   <select
                     value={selectedBankKodeGuru}
                     onChange={(e) => setSelectedBankKodeGuru(e.target.value)}
-                    className="bg-white border border-amber-300 text-amber-900 font-mono font-bold text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-amber-500 focus:outline-none cursor-pointer"
+                    className="bg-white border border-emerald-300 text-emerald-950 font-mono font-bold text-xs rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
                   >
                     <option value="ALL">Semua Kode Guru</option>
                     {availableKodeGurus.map((kg) => (
@@ -3077,22 +3183,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               {selectedBankMapel !== 'ALL' && selectedBankMapel !== config.mapel && (
-                <button
-                  onClick={() => {
-                    setMapelInput(selectedBankMapel);
-                    const newTitle = `Assessment TKA ${selectedBankMapel} SMA`;
-                    setMapelTitleInput(newTitle);
-                    onSaveConfig({
-                      ...config,
-                      mapel: selectedBankMapel,
-                      mapelTitle: newTitle,
-                    });
-                    showAlert(`Mata pelajaran "${selectedBankMapel}" diset sebagai mata pelajaran ujian aktif!`);
-                  }}
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 active:scale-95 shrink-0 cursor-pointer shadow-xs"
-                >
-                  <CheckCircle className="w-3.5 h-3.5" /> Set "{selectedBankMapel}" Sebagai Mapel Ujian
-                </button>
+                <div className="pt-2 border-t border-slate-200/80 flex justify-end">
+                  <button
+                    onClick={() => {
+                      setMapelInput(selectedBankMapel);
+                      const newTitle = `Assessment TKA ${selectedBankMapel} SMA`;
+                      setMapelTitleInput(newTitle);
+                      onSaveConfig({
+                        ...config,
+                        mapel: selectedBankMapel,
+                        mapelTitle: newTitle,
+                      });
+                      showAlert(`Mata pelajaran "${selectedBankMapel}" diset sebagai mata pelajaran ujian aktif!`);
+                    }}
+                    className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" /> Set "{selectedBankMapel}" Sebagai Mapel Ujian Aktif
+                  </button>
+                </div>
               )}
             </div>
 
@@ -3103,7 +3211,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari berdasarkan kata kunci pertanyaan..."
+                placeholder="Cari berdasarkan kata kunci pertanyaan, kompetensi, atau bentuk soal..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
@@ -3153,7 +3261,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
               {filteredQuestions.length === 0 ? (
                 <div className="text-center text-gray-400 py-12 text-sm font-medium">
-                  Belum ada soal. Silakan klik Tambah Soal atau Upload Excel.
+                  Belum ada soal yang sesuai dengan filter. Silakan ubah filter atau klik Tambah Soal / Upload Excel.
                 </div>
               ) : (
                 filteredQuestions.map((q, idx) => {
@@ -3184,21 +3292,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         />
 
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                             <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-md">
                               Soal #{idx + 1}
                             </span>
-                            <span className="bg-sky-100 text-sky-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md border border-sky-200/80">
-                              {q.mapel || mapelInput || 'Sosiologi'}
+                            <span className="bg-sky-100 text-sky-800 text-[10px] font-bold px-2 py-0.5 rounded-md border border-sky-200/80">
+                              Mapel: {q.mapel || mapelInput || 'Sosiologi'}
                             </span>
-                            {q.subTopik && (
-                              <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2.5 py-0.5 rounded-md border border-amber-300/80 flex items-center gap-1">
-                                <Tag className="w-3 h-3 text-amber-600" /> {q.subTopik}
+                            <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-300/80 flex items-center gap-1">
+                              <Tag className="w-3 h-3 text-amber-600" /> Komp: {q.kompetensi || q.subTopik || 'Umum'}
+                            </span>
+                            <span className="bg-purple-100 text-purple-900 text-[10px] font-bold px-2 py-0.5 rounded-md border border-purple-200/80 flex items-center gap-1">
+                              <Layers className="w-3 h-3 text-purple-600" /> {q.bentukSoal || 'Pilihan Ganda'}
+                            </span>
+                            {q.kodeGuru && (
+                              <span className="bg-slate-100 text-slate-700 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border border-slate-200">
+                                Guru: {q.kodeGuru}
                               </span>
                             )}
                             {q.image && (
-                              <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md border border-purple-200/80 flex items-center gap-1">
-                                <ImageIcon className="w-3 h-3 text-purple-600" /> Ada Gambar/Tabel
+                              <span className="bg-pink-100 text-pink-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md border border-pink-200/80 flex items-center gap-1">
+                                <ImageIcon className="w-3 h-3 text-pink-600" /> Gambar/Tabel
                               </span>
                             )}
                             <span className="text-[11px] font-mono text-gray-400">ID: {q.id}</span>

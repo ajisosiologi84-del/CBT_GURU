@@ -15,7 +15,9 @@ interface QuestionEditorModalProps {
     explanation: string;
     image?: string;
     mapel?: string;
+    kompetensi?: string;
     subTopik?: string;
+    bentukSoal?: string;
     kodeGuru?: string;
     id?: number;
   }) => void;
@@ -36,7 +38,9 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
   const [questionText, setQuestionText] = useState('');
   const [explanationText, setExplanationText] = useState('');
   const [selectedMapel, setSelectedMapel] = useState<string>(defaultMapel);
+  const [kompetensiText, setKompetensiText] = useState<string>('');
   const [subTopikText, setSubTopikText] = useState<string>('');
+  const [bentukSoalText, setBentukSoalText] = useState<string>('Pilihan Ganda');
   const [kodeGuruText, setKodeGuruText] = useState<string>(defaultKodeGuru);
   const [imageString, setImageString] = useState<string>('');
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -53,7 +57,10 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       setQuestionText(editingQuestion.question);
       setExplanationText(editingQuestion.explanation || '');
       setSelectedMapel(editingQuestion.mapel || defaultMapel);
-      setSubTopikText(editingQuestion.subTopik || '');
+      const komp = editingQuestion.kompetensi || editingQuestion.subTopik || '';
+      setKompetensiText(komp);
+      setSubTopikText(komp);
+      setBentukSoalText(editingQuestion.bentukSoal || 'Pilihan Ganda');
       setKodeGuruText(editingQuestion.kodeGuru || defaultKodeGuru || 'GURU01');
       setImageString(editingQuestion.image || '');
       setImageUrlInput(editingQuestion.image && !editingQuestion.image.startsWith('data:') ? editingQuestion.image : '');
@@ -69,7 +76,9 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       setQuestionText('');
       setExplanationText('');
       setSelectedMapel(defaultMapel);
+      setKompetensiText('');
       setSubTopikText('');
+      setBentukSoalText('Pilihan Ganda');
       setKodeGuruText(defaultKodeGuru || 'GURU01');
       setImageString('');
       setImageUrlInput('');
@@ -203,7 +212,9 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
       explanation: explanationText.trim() || 'Tidak ada pembahasan.',
       image: imageString.trim() || undefined,
       mapel: selectedMapel,
-      subTopik: subTopikText.trim() || undefined,
+      kompetensi: kompetensiText.trim() || subTopikText.trim() || undefined,
+      subTopik: subTopikText.trim() || kompetensiText.trim() || undefined,
+      bentukSoal: bentukSoalText,
       kodeGuru: kodeGuruText.trim().toUpperCase() || defaultKodeGuru || 'GURU01',
     });
   };
@@ -254,15 +265,16 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
 
         {activeTab === 'editor' ? (
           <div className="p-6 overflow-y-auto flex-1 space-y-5 custom-scrollbar">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+              {/* 1. Mata Pelajaran */}
               <div>
-                <label className="block font-bold text-gray-800 mb-1.5 text-sm">
+                <label className="block font-bold text-slate-800 mb-1.5 text-xs uppercase tracking-wider">
                   Mata Pelajaran <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedMapel}
                   onChange={(e) => setSelectedMapel(e.target.value)}
-                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-bold bg-white cursor-pointer"
+                  className="w-full border-2 border-slate-300 rounded-xl p-2.5 focus:border-sky-500 focus:outline-none text-xs font-bold bg-white cursor-pointer"
                 >
                   {mapelList.map((m) => (
                     <option key={m} value={m}>
@@ -272,31 +284,52 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
                 </select>
               </div>
 
+              {/* 2. Kompetensi / Sub Topik */}
               <div>
-                <label className="block font-bold text-gray-800 mb-1.5 text-sm flex items-center justify-between">
+                <label className="block font-bold text-slate-800 mb-1.5 text-xs uppercase tracking-wider flex items-center justify-between">
+                  <span>Kompetensi / KD</span>
+                </label>
+                <input
+                  type="text"
+                  value={kompetensiText}
+                  onChange={(e) => {
+                    setKompetensiText(e.target.value);
+                    setSubTopikText(e.target.value);
+                  }}
+                  placeholder="e.g. 3.1 Perubahan Sosial"
+                  className="w-full border-2 border-slate-300 rounded-xl p-2.5 focus:border-sky-500 focus:outline-none text-xs font-semibold bg-white"
+                />
+              </div>
+
+              {/* 3. Bentuk Soal */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1.5 text-xs uppercase tracking-wider">
+                  Bentuk Soal <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={bentukSoalText}
+                  onChange={(e) => setBentukSoalText(e.target.value)}
+                  className="w-full border-2 border-slate-300 rounded-xl p-2.5 focus:border-purple-500 focus:outline-none text-xs font-bold bg-white cursor-pointer"
+                >
+                  <option value="Pilihan Ganda">Pilihan Ganda (PG)</option>
+                  <option value="Pilihan Ganda Kompleks">Pilihan Ganda Kompleks</option>
+                  <option value="Menjodohkan">Menjodohkan</option>
+                  <option value="Isian Singkat">Isian Singkat</option>
+                  <option value="Uraian">Uraian / Essay</option>
+                </select>
+              </div>
+
+              {/* 4. Kode Guru */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1.5 text-xs uppercase tracking-wider flex items-center justify-between">
                   <span>Kode Guru</span>
-                  <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-black">Penanda Unik</span>
                 </label>
                 <input
                   type="text"
                   value={kodeGuruText}
                   onChange={(e) => setKodeGuruText(e.target.value.toUpperCase())}
                   placeholder="Contoh: GURU01"
-                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-bold bg-white uppercase tracking-wider"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-800 mb-1.5 text-sm flex items-center justify-between">
-                  <span>Sub Topik / Materi</span>
-                  <span className="text-xs font-normal text-gray-400">(Opsional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={subTopikText}
-                  onChange={(e) => setSubTopikText(e.target.value)}
-                  placeholder="Contoh: Perubahan Sosial"
-                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-blue-500 focus:outline-none text-sm font-medium bg-white"
+                  className="w-full border-2 border-slate-300 rounded-xl p-2.5 focus:border-amber-500 focus:outline-none text-xs font-bold bg-white uppercase tracking-wider"
                 />
               </div>
             </div>
@@ -468,9 +501,17 @@ export const QuestionEditorModal: React.FC<QuestionEditorModalProps> = ({
               <span className="bg-sky-100 text-sky-800 text-xs font-extrabold px-3 py-1 rounded-lg border border-sky-200">
                 Mata Pelajaran: {selectedMapel}
               </span>
-              {subTopikText.trim() && (
+              <span className="bg-purple-100 text-purple-900 text-xs font-extrabold px-3 py-1 rounded-lg border border-purple-200">
+                Bentuk Soal: {bentukSoalText}
+              </span>
+              {(kompetensiText.trim() || subTopikText.trim()) && (
                 <span className="bg-amber-100 text-amber-900 text-xs font-extrabold px-3 py-1 rounded-lg border border-amber-300 flex items-center gap-1">
-                  <Tag className="w-3.5 h-3.5 text-amber-600" /> Sub Topik / Materi: {subTopikText.trim()}
+                  <Tag className="w-3.5 h-3.5 text-amber-600" /> Kompetensi: {kompetensiText.trim() || subTopikText.trim()}
+                </span>
+              )}
+              {kodeGuruText.trim() && (
+                <span className="bg-slate-100 text-slate-800 font-mono text-xs font-extrabold px-2.5 py-1 rounded-lg border border-slate-300">
+                  Guru: {kodeGuruText.trim()}
                 </span>
               )}
             </div>

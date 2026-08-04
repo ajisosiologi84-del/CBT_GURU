@@ -12,7 +12,9 @@ export interface Question {
   image?: string; // Base64 data URL or image URL for question image / table / diagram
   isActive?: boolean; // Default true, toggle to enable/disable for exam
   mapel?: string; // Mata pelajaran (e.g. 'Sosiologi', 'Geografi', etc.)
+  kompetensi?: string; // Kompetensi Dasar / Sub Topik / Capaian Pembelajaran (e.g. 'Perubahan Sosial', '3.1 KD Sosiologi', dll)
   subTopik?: string; // Sub Topik / Materi Ujian (e.g. 'Perubahan Sosial', 'Globalisasi', dll)
+  bentukSoal?: 'Pilihan Ganda' | 'Pilihan Ganda Kompleks' | 'Menjodohkan' | 'Isian Singkat' | 'Uraian' | string; // Bentuk Soal (default 'Pilihan Ganda')
   kodeGuru?: string; // Kode Guru Pengampu (e.g. 'GURU01', 'GR-AJI')
 }
 
