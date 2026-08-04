@@ -12,27 +12,38 @@ service cloud.firestore {
       return request.resource.data;
     }
 
+    function existing() {
+      return resource.data;
+    }
+
     // Schema Validation Helpers
     function isValidConfig(data) {
       return data is map &&
-        data.schoolName is string && data.schoolName.size() <= 300 &&
-        data.examTitle is string && data.examTitle.size() <= 300 &&
-        data.questions is list && data.questions.size() <= 1000 &&
-        data.students is list && data.students.size() <= 5000;
+        (!('schoolName' in data) || (data.schoolName is string && data.schoolName.size() <= 500)) &&
+        (!('examTitle' in data) || (data.examTitle is string && data.examTitle.size() <= 500)) &&
+        (!('questions' in data) || (data.questions is list && data.questions.size() <= 1000)) &&
+        (!('students' in data) || (data.students is list && data.students.size() <= 10000)) &&
+        (!('teachers' in data) || (data.teachers is list && data.teachers.size() <= 1000));
     }
 
     function isValidStudentResult(data) {
       return data is map &&
-        data.id is string && data.id.size() <= 128 &&
-        data.studentInfo is map &&
-        data.score is number;
+        (!('id' in data) || (data.id is string && data.id.size() <= 128)) &&
+        (!('score' in data) || data.score is number);
     }
 
     function isValidTeacher(data) {
       return data is map &&
-        data.id is string && data.id.size() <= 128 &&
-        data.username is string && data.username.size() <= 100 &&
-        data.name is string && data.name.size() <= 200;
+        (!('id' in data) || (data.id is string && data.id.size() <= 128)) &&
+        (('nip' in data && data.nip is string) || ('username' in data && data.username is string)) &&
+        (('nama' in data && data.nama is string) || ('name' in data && data.name is string));
+    }
+
+    function isValidStudent(data) {
+      return data is map &&
+        (!('id' in data) || (data.id is string && data.id.size() <= 128)) &&
+        (!('nis' in data) || (data.nis is string && data.nis.size() <= 100)) &&
+        (!('nama' in data) || (data.nama is string && data.nama.size() <= 300));
     }
 
     // CBT Configuration
@@ -77,7 +88,7 @@ service cloud.firestore {
     // Student Master Data
     match /cbt_students/{studentId} {
       allow read: if isValidId(studentId);
-      allow create, update: if isValidId(studentId);
+      allow create, update: if isValidId(studentId) && isValidStudent(incoming());
       allow delete: if isValidId(studentId);
     }
 

@@ -6,6 +6,15 @@ import { generateResultsPdfReport, generateIndividualStudentPdf, generateItemAna
 import { DownloadAnimationModal } from './DownloadAnimationModal';
 import * as XLSX from 'xlsx';
 import {
+  saveStudentToFirebase,
+  deleteStudentFromFirebase,
+  deleteSelectedStudentsFromFirebase,
+  saveAllStudentsToFirebase,
+  saveTeacherToFirebase,
+  deleteTeacherFromFirebase,
+  saveAllTeachersToFirebase,
+} from '../lib/firebase';
+import {
   Sliders,
   Database,
   FileSpreadsheet,
@@ -356,6 +365,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [newTeacherNama, setNewTeacherNama] = useState('');
   const [newTeacherMapel, setNewTeacherMapel] = useState('');
   const [newTeacherKodeGuru, setNewTeacherKodeGuru] = useState('');
+
+  // Edit Student & Teacher Modals
+  const [editingStudent, setEditingStudent] = useState<StudentUser | null>(null);
+  const [editingTeacher, setEditingTeacher] = useState<TeacherUser | null>(null);
 
   // Kop Sekolah & Signature Modal State
   const [isKopModalOpen, setIsKopModalOpen] = useState(false);
@@ -1206,17 +1219,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       nama: newNama.trim(),
       kelas: newKelas.trim() || 'XII IPS',
       kodeGuru: newStudentKodeGuru.trim().toUpperCase() || config.kodeGuru || 'GURU01',
+      isActive: true,
     };
 
     const updated = [...studentsList, newStudent];
     onSaveConfig({ ...config, students: updated });
+    saveStudentToFirebase(newStudent);
 
     setNewNis('');
     setNewNama('');
     setNewKelas('');
     setNewStudentKodeGuru('');
     setIsAddStudentModalOpen(false);
-    showAlert(`Siswa "${newStudent.nama}" berhasil ditambahkan!`);
+    showAlert(`Siswa "${newStudent.nama}" berhasil ditambahkan & tersimpan ke Firebase!`);
+  };
+
+  const handleUpdateStudentManual = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+    if (!editingStudent.nis.trim() || !editingStudent.nama.trim()) {
+      showAlert('Harap isi NIS dan Nama Siswa!');
+      return;
+    }
+
+    const updatedStudent: StudentUser = {
+      ...editingStudent,
+      nis: editingStudent.nis.trim(),
+      nama: editingStudent.nama.trim(),
+      kelas: editingStudent.kelas.trim() || 'XII IPS',
+      kodeGuru: (editingStudent.kodeGuru || config.kodeGuru || 'GURU01').trim().toUpperCase(),
+    };
+
+    const updated = studentsList.map((s) => (s.id === updatedStudent.id ? updatedStudent : s));
+    onSaveConfig({ ...config, students: updated });
+    saveStudentToFirebase(updatedStudent);
+
+    setEditingStudent(null);
+    showAlert(`Data siswa "${updatedStudent.nama}" berhasil diperbarui & disimpan di Firebase!`);
   };
 
   const handleStudentExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1254,6 +1293,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 nama: namaVal,
                 kelas: kelasVal,
                 kodeGuru: kodeGuruVal,
+                isActive: true,
               });
               countAdded++;
             }
@@ -1263,7 +1303,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         if (countAdded > 0) {
           const updated = [...studentsList, ...newStudents];
           onSaveConfig({ ...config, students: updated });
-          showAlert(`Sukses mengimpor ${countAdded} data siswa baru dari Excel!`);
+          saveAllStudentsToFirebase(newStudents);
+          showAlert(`Sukses mengimpor ${countAdded} data siswa baru dari Excel & tersimpan di Firebase!`);
         } else {
           showAlert(
             'Tidak ada data siswa baru yang diimpor. Pastikan format kolom Excel adalah: NIS, Nama, Kelas (dan NIS belum terdaftar).'
@@ -1285,7 +1326,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       () => {
         const updated = studentsList.filter((s) => s.id !== id);
         onSaveConfig({ ...config, students: updated });
-        showAlert(`Data siswa "${nama}" berhasil dihapus.`);
+        deleteStudentFromFirebase(id);
+        showAlert(`Data siswa "${nama}" berhasil dihapus dari sistem & Firebase.`);
       },
       true
     );
@@ -1298,14 +1340,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // --- STUDENT ACTIVE EXAM SELECTION HANDLERS ---
   const handleToggleStudentActive = (id: string) => {
+    let targetStudent: StudentUser | null = null;
     const updated = studentsList.map((s) => {
       if (s.id === id) {
         const currentActive = s.isActive !== false;
-        return { ...s, isActive: !currentActive };
+        targetStudent = { ...s, isActive: !currentActive };
+        return targetStudent;
       }
       return s;
     });
     onSaveConfig({ ...config, students: updated });
+    if (targetStudent) {
+      saveStudentToFirebase(targetStudent);
+    }
   };
 
   const handleSetClassActiveStatus = (kelasName: string, isActive: boolean, exclusivelyThisClass: boolean = false) => {
@@ -1319,6 +1366,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return s;
     });
     onSaveConfig({ ...config, students: updated });
+    saveAllStudentsToFirebase(updated);
 
     if (exclusivelyThisClass) {
       showAlert(`Hanya siswa di kelas "${kelasName}" yang DIAKTIFKAN UJIAN. Siswa kelas lainnya di-nonaktifkan.`);
@@ -1330,6 +1378,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleSetAllStudentsActive = (isActive: boolean) => {
     const updated = studentsList.map((s) => ({ ...s, isActive }));
     onSaveConfig({ ...config, students: updated });
+    saveAllStudentsToFirebase(updated);
     showAlert(`Semua siswa (${studentsList.length}) berhasil di-${isActive ? 'aktifkan' : 'nonaktifkan'} untuk ujian.`);
   };
 
@@ -1345,6 +1394,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return s;
     });
     onSaveConfig({ ...config, students: updated });
+    saveAllStudentsToFirebase(updated);
     showAlert(`${selectedStudentIds.length} siswa terpilih berhasil di-${isActive ? 'aktifkan' : 'nonaktifkan'} untuk ujian.`);
     setSelectedStudentIds([]);
   };
@@ -1355,10 +1405,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       'Hapus Siswa Terpilih?',
       `Apakah Anda yakin ingin menghapus ${selectedStudentIds.length} siswa yang dicentang?`,
       () => {
-        const updated = studentsList.filter((s) => !selectedStudentIds.includes(s.id));
+        const idsToDelete = [...selectedStudentIds];
+        const updated = studentsList.filter((s) => !idsToDelete.includes(s.id));
         onSaveConfig({ ...config, students: updated });
+        deleteSelectedStudentsFromFirebase(idsToDelete);
         setSelectedStudentIds([]);
-        showAlert(`${selectedStudentIds.length} siswa berhasil dihapus.`);
+        showAlert(`${idsToDelete.length} siswa berhasil dihapus dari Firebase.`);
       },
       true
     );
@@ -1416,13 +1468,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     const updated = [...teachersList, newTeacher];
     onSaveConfig({ ...config, teachers: updated });
+    saveTeacherToFirebase(newTeacher);
 
     setNewNip('');
     setNewTeacherNama('');
     setNewTeacherMapel('');
     setNewTeacherKodeGuru('');
     setIsAddTeacherModalOpen(false);
-    showAlert(`Guru "${newTeacher.nama}" berhasil ditambahkan!`);
+    showAlert(`Guru "${newTeacher.nama}" berhasil ditambahkan & tersimpan ke Firebase!`);
+  };
+
+  const handleUpdateTeacherManual = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTeacher) return;
+    if (!editingTeacher.nip.trim() || !editingTeacher.nama.trim()) {
+      showAlert('Harap isi Username/NIP dan Nama Guru!');
+      return;
+    }
+
+    const updatedTeacher: TeacherUser = {
+      ...editingTeacher,
+      nip: editingTeacher.nip.trim(),
+      nama: editingTeacher.nama.trim(),
+      mapel: editingTeacher.mapel.trim() || 'Sosiologi',
+      kodeGuru: (editingTeacher.kodeGuru || 'GURU01').trim().toUpperCase(),
+    };
+
+    const updated = teachersList.map((t) => (t.id === updatedTeacher.id ? updatedTeacher : t));
+    onSaveConfig({ ...config, teachers: updated });
+    saveTeacherToFirebase(updatedTeacher);
+
+    setEditingTeacher(null);
+    showAlert(`Data guru "${updatedTeacher.nama}" berhasil diperbarui & disimpan di Firebase!`);
   };
 
   const handleTeacherExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1468,7 +1545,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         if (countAdded > 0) {
           const updated = [...teachersList, ...newTeachers];
           onSaveConfig({ ...config, teachers: updated });
-          showAlert(`Sukses mengimpor ${countAdded} data guru baru dari Excel!`);
+          saveAllTeachersToFirebase(newTeachers);
+          showAlert(`Sukses mengimpor ${countAdded} data guru baru dari Excel & tersimpan di Firebase!`);
         } else {
           showAlert(
             'Tidak ada data guru baru yang diimpor. Pastikan format kolom Excel adalah: NIP, Nama, Mata_Pelajaran.'
@@ -1490,7 +1568,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       () => {
         const updated = teachersList.filter((t) => t.id !== id);
         onSaveConfig({ ...config, teachers: updated });
-        showAlert(`Data guru "${nama}" berhasil dihapus.`);
+        deleteTeacherFromFirebase(id);
+        showAlert(`Data guru "${nama}" berhasil dihapus dari sistem & Firebase.`);
       },
       true
     );
@@ -3877,13 +3956,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               </td>
                               {adminRole !== 'teacher' && (
                                 <td className="p-3 text-center">
-                                  <button
-                                    onClick={() => handleDeleteStudent(s.id, s.nama)}
-                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                    title="Hapus Siswa"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      onClick={() => setEditingStudent(s)}
+                                      className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Edit Data Siswa"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteStudent(s.id, s.nama)}
+                                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Hapus Siswa"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
                                 </td>
                               )}
                             </tr>
@@ -3994,13 +4082,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             </td>
                             {adminRole !== 'teacher' && (
                               <td className="p-3 text-center">
-                                <button
-                                  onClick={() => handleDeleteTeacher(t.id, t.nama)}
-                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Hapus Guru"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => setEditingTeacher(t)}
+                                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Edit Data Guru"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTeacher(t.id, t.nama)}
+                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Hapus Guru"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
                               </td>
                             )}
                           </tr>
@@ -5727,6 +5824,188 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-md cursor-pointer"
                 >
                   Simpan Data Guru
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT SISWA */}
+      {editingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
+            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-indigo-400" /> Edit Data Siswa
+              </h3>
+              <button
+                onClick={() => setEditingStudent(null)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateStudentManual} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  NIS / Nomor Induk Siswa <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingStudent.nis}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, nis: e.target.value })}
+                  placeholder="Contoh: 1001"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Nama Lengkap Siswa <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingStudent.nama}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, nama: e.target.value })}
+                  placeholder="Contoh: Ahmad Fauzi"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Kelas
+                </label>
+                <input
+                  type="text"
+                  value={editingStudent.kelas}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, kelas: e.target.value })}
+                  placeholder="Contoh: XII IPS 1"
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Kode Guru
+                </label>
+                <input
+                  type="text"
+                  value={editingStudent.kodeGuru || ''}
+                  onChange={(e) => setEditingStudent({ ...editingStudent, kodeGuru: e.target.value.toUpperCase() })}
+                  placeholder="Contoh: GURU01"
+                  className="w-full border-2 border-amber-200 bg-amber-50/50 rounded-xl p-2.5 focus:border-amber-500 focus:outline-none text-sm font-mono font-bold text-amber-900"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingStudent(null)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-md cursor-pointer"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT GURU */}
+      {editingTeacher && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
+            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-indigo-400" /> Edit Data Guru
+              </h3>
+              <button
+                onClick={() => setEditingTeacher(null)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateTeacherManual} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Username / NIP <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingTeacher.nip}
+                  onChange={(e) => setEditingTeacher({ ...editingTeacher, nip: e.target.value })}
+                  placeholder="Contoh: 198501152010011002"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Nama Lengkap Guru <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingTeacher.nama}
+                  onChange={(e) => setEditingTeacher({ ...editingTeacher, nama: e.target.value })}
+                  placeholder="Contoh: Drs. Aji Sosiologi, M.Pd"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Mata Pelajaran
+                </label>
+                <input
+                  type="text"
+                  value={editingTeacher.mapel}
+                  onChange={(e) => setEditingTeacher({ ...editingTeacher, mapel: e.target.value })}
+                  placeholder="Contoh: Sosiologi"
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Kode Guru
+                </label>
+                <input
+                  type="text"
+                  value={editingTeacher.kodeGuru || ''}
+                  onChange={(e) => setEditingTeacher({ ...editingTeacher, kodeGuru: e.target.value.toUpperCase() })}
+                  placeholder="Contoh: GURU01"
+                  className="w-full border-2 border-amber-200 bg-amber-50/50 rounded-xl p-2.5 focus:border-amber-500 focus:outline-none text-sm font-mono font-bold text-amber-900"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingTeacher(null)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-md cursor-pointer"
+                >
+                  Simpan Perubahan
                 </button>
               </div>
             </form>

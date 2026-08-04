@@ -18,6 +18,10 @@ import {
   saveStudentResultToFirebase,
   loadStudentResultsFromFirebase,
   subscribeStudentResultsFromFirebase,
+  loadStudentsFromFirebase,
+  loadTeachersFromFirebase,
+  saveAllStudentsToFirebase,
+  saveAllTeachersToFirebase,
 } from './lib/firebase';
 
 const STORAGE_KEY = 'cbt_sosiologi_config_v2';
@@ -94,6 +98,12 @@ export default function App() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedConfig));
       saveConfigToFirebase(updatedConfig);
+      if (updatedConfig.students && updatedConfig.students.length > 0) {
+        saveAllStudentsToFirebase(updatedConfig.students);
+      }
+      if (updatedConfig.teachers && updatedConfig.teachers.length > 0) {
+        saveAllTeachersToFirebase(updatedConfig.teachers);
+      }
     } catch (e) {
       console.error('Failed to save to local storage or Firebase:', e);
     }
@@ -135,9 +145,25 @@ export default function App() {
   // Firebase Synchronization Effect
   useEffect(() => {
     // Initial fetch from Firebase
-    loadConfigFromFirebase().then((remoteConfig) => {
-      if (remoteConfig && Array.isArray(remoteConfig.questions) && remoteConfig.questions.length > 0) {
-        const merged = mergeRemoteConfigWithLocalToken(remoteConfig);
+    loadConfigFromFirebase().then(async (remoteConfig) => {
+      let currentConfig = remoteConfig;
+      if (currentConfig && Array.isArray(currentConfig.questions) && currentConfig.questions.length > 0) {
+        let merged = mergeRemoteConfigWithLocalToken(currentConfig);
+
+        // Sync remote standalone students & teachers collections if available
+        try {
+          const [remoteStudents, remoteTeachers] = await Promise.all([
+            loadStudentsFromFirebase(),
+            loadTeachersFromFirebase(),
+          ]);
+          if (remoteStudents.length > 0) {
+            merged = { ...merged, students: remoteStudents };
+          }
+          if (remoteTeachers.length > 0) {
+            merged = { ...merged, teachers: remoteTeachers };
+          }
+        } catch (e) {}
+
         setConfig(merged);
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
@@ -158,7 +184,12 @@ export default function App() {
     const unsubConfig = subscribeConfigFromFirebase((remoteConfig) => {
       if (remoteConfig && Array.isArray(remoteConfig.questions) && remoteConfig.questions.length > 0) {
         const merged = mergeRemoteConfigWithLocalToken(remoteConfig);
-        setConfig(merged);
+        setConfig((prev) => ({
+          ...merged,
+          // Preserve students and teachers if already loaded locally and newer
+          students: (merged.students && merged.students.length > 0) ? merged.students : prev.students,
+          teachers: (merged.teachers && merged.teachers.length > 0) ? merged.teachers : prev.teachers,
+        }));
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
         } catch (e) {}
