@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { AppConfig, StudentInfo, StudentUser, StudentResult } from '../types';
+import { AppConfig, StudentInfo, StudentUser, StudentResult, TeacherUser } from '../types';
 import { User, Key, LogIn, Settings, AlertCircle, KeyRound, Users, GraduationCap, BookOpen, UserCheck, FileUp, HelpCircle, CheckCircle2, Download, Sparkles, Building2, Trophy, Crown, Medal, Award, Flame, ChevronDown, ChevronUp } from 'lucide-react';
 import { CbtLogo } from './CbtLogo';
 import { decryptAppBackup } from '../utils/crypto';
+import { loadTeachersFromFirebase, loadAdminsFromFirebase } from '../lib/firebase';
 
 interface LoginViewProps {
   config: AppConfig;
   studentResults?: StudentResult[];
   onStudentLoginSuccess: (studentInfo: StudentInfo) => void;
-  onAdminLoginSuccess: (role: 'admin' | 'teacher') => void;
+  onAdminLoginSuccess: (role: 'admin' | 'teacher', teacherDetails?: TeacherUser) => void;
   onSaveConfig?: (newConfig: AppConfig) => void;
   showAlert?: (msg: string) => void;
 }
@@ -142,7 +143,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     onStudentLoginSuccess(studentInfo);
   };
 
-  const handleAdminSubmit = (e: React.FormEvent) => {
+  const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -150,6 +151,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
     const u = adminUser.trim();
     const p = adminPass.trim();
     const uLower = u.toLowerCase();
+    const pLower = p.toLowerCase();
 
     if (!u || !p) {
       triggerError('Harap isi Username dan Password!');
@@ -164,20 +166,59 @@ export const LoginView: React.FC<LoginViewProps> = ({
       return;
     }
 
-    if (uLower === 'guru' && p === 'guru') {
-      onAdminLoginSuccess('teacher');
+    // Check if u and p match any registered admin in config.admins
+    const localAdmin = (config.admins || []).find(
+      (a) => a.username.trim().toLowerCase() === uLower && a.password === p
+    );
+    if (localAdmin) {
+      onAdminLoginSuccess('admin');
       return;
     }
 
-    // Check if u and p match any teacher's NIP in config.teachers
-    const foundTeacher = (config.teachers || []).find(
-      (t) => t.nip.trim() === u && (t.nip.trim() === p || p === 'guru')
+    if (uLower === 'guru' && pLower === 'guru') {
+      const defaultTeacher = config.teachers && config.teachers.length > 0 ? config.teachers[0] : undefined;
+      onAdminLoginSuccess('teacher', defaultTeacher);
+      return;
+    }
+
+    // Check if u and p match any teacher's NIP / KodeGuru in config.teachers
+    const localTeacher = (config.teachers || []).find(
+      (t) =>
+        (t.nip.trim().toLowerCase() === uLower || (t.kodeGuru && t.kodeGuru.trim().toLowerCase() === uLower) || t.nama.trim().toLowerCase().includes(uLower)) &&
+        (t.nip.trim().toLowerCase() === pLower || (t.kodeGuru && t.kodeGuru.trim().toLowerCase() === pLower) || pLower === 'guru' || p === '123456')
     );
 
-    if (foundTeacher) {
-      onAdminLoginSuccess('teacher');
+    if (localTeacher) {
+      onAdminLoginSuccess('teacher', localTeacher);
       return;
     }
+
+    // Fallback: Check Firebase Firestore for Admin account
+    try {
+      const remoteAdmins = await loadAdminsFromFirebase();
+      const remoteAdmin = remoteAdmins.find(
+        (a) => a.username && a.username.trim().toLowerCase() === uLower && a.password === p
+      );
+      if (remoteAdmin) {
+        onAdminLoginSuccess('admin');
+        return;
+      }
+    } catch (e) {}
+
+    // Fallback: Check Firebase Firestore for teacher account
+    try {
+      const remoteTeachers = await loadTeachersFromFirebase();
+      const remoteTeacher = remoteTeachers.find(
+        (t) =>
+          t.nip &&
+          (t.nip.trim().toLowerCase() === uLower || (t.kodeGuru && t.kodeGuru.trim().toLowerCase() === uLower)) &&
+          (t.nip.trim().toLowerCase() === pLower || (t.kodeGuru && t.kodeGuru.trim().toLowerCase() === pLower) || pLower === 'guru')
+      );
+      if (remoteTeacher) {
+        onAdminLoginSuccess('teacher', remoteTeacher);
+        return;
+      }
+    } catch (e) {}
 
     triggerError('Otentikasi Gagal! Username atau Password yang Anda masukkan tidak sesuai.');
   };

@@ -19,7 +19,7 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { AppConfig, StudentResult, TeacherUser, StudentUser } from '../types';
+import { AppConfig, StudentResult, TeacherUser, StudentUser, AdminUser } from '../types';
 
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -37,6 +37,7 @@ const CONFIG_COLLECTION = 'cbt_config';
 const RESULTS_COLLECTION = 'student_results';
 const TEACHERS_COLLECTION = 'teacher_accounts';
 const STUDENTS_COLLECTION = 'cbt_students';
+const ADMINS_COLLECTION = 'admin_accounts';
 
 let isQuotaExceeded = false;
 
@@ -221,6 +222,28 @@ export async function deleteTeacherFromFirebase(teacherId: string): Promise<bool
   }
 }
 
+export async function deleteSelectedTeachersFromFirebase(idsToDelete: string[]): Promise<boolean> {
+  if (isQuotaExceeded || !idsToDelete || idsToDelete.length === 0) return false;
+  try {
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < idsToDelete.length; i += CHUNK_SIZE) {
+      const chunk = idsToDelete.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach((id) => {
+        if (id) {
+          const docRef = doc(db, TEACHERS_COLLECTION, id);
+          batch.delete(docRef);
+        }
+      });
+      await batch.commit();
+    }
+    return true;
+  } catch (error) {
+    handleFirestoreError('deleteSelectedTeachers', error);
+    return false;
+  }
+}
+
 export async function loadTeachersFromFirebase(): Promise<TeacherUser[]> {
   if (isQuotaExceeded) return [];
   try {
@@ -237,19 +260,166 @@ export async function loadTeachersFromFirebase(): Promise<TeacherUser[]> {
 }
 
 export async function saveAllTeachersToFirebase(teachers: TeacherUser[]): Promise<boolean> {
-  if (isQuotaExceeded || !teachers) return false;
+  if (isQuotaExceeded || !teachers || teachers.length === 0) return false;
   try {
-    const batch = writeBatch(db);
-    teachers.forEach((teacher) => {
-      const docRef = doc(db, TEACHERS_COLLECTION, teacher.id);
-      batch.set(docRef, teacher, { merge: true });
-    });
-    await batch.commit();
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < teachers.length; i += CHUNK_SIZE) {
+      const chunk = teachers.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach((teacher) => {
+        if (teacher && teacher.id) {
+          const docRef = doc(db, TEACHERS_COLLECTION, teacher.id);
+          batch.set(docRef, teacher, { merge: true });
+        }
+      });
+      await batch.commit();
+    }
     return true;
   } catch (error) {
     handleFirestoreError('saveAllTeachers', error);
     return false;
   }
+}
+
+export function subscribeTeachersFromFirebase(onUpdate: (teachers: TeacherUser[]) => void): () => void {
+  if (isQuotaExceeded) return () => {};
+  let unsubscribe: () => void = () => {};
+  try {
+    const colRef = collection(db, TEACHERS_COLLECTION);
+    unsubscribe = onSnapshot(colRef, (querySnap) => {
+      const list: TeacherUser[] = [];
+      querySnap.forEach((docSnap) => {
+        if (docSnap.exists()) {
+          list.push(docSnap.data() as TeacherUser);
+        }
+      });
+      if (list.length > 0) {
+        onUpdate(list);
+      }
+    }, (err) => {
+      handleFirestoreError('subscribeTeachers', err);
+    });
+  } catch (err) {
+    handleFirestoreError('subscribeTeachers', err);
+  }
+  return () => {
+    try {
+      if (unsubscribe) unsubscribe();
+    } catch (e) {}
+  };
+}
+
+/**
+ * Admin accounts management in Firestore
+ */
+export async function saveAdminToFirebase(admin: AdminUser): Promise<boolean> {
+  if (isQuotaExceeded) return false;
+  try {
+    const docRef = doc(db, ADMINS_COLLECTION, admin.id);
+    await setDoc(docRef, admin, { merge: true });
+    return true;
+  } catch (error) {
+    handleFirestoreError('saveAdmin', error);
+    return false;
+  }
+}
+
+export async function deleteAdminFromFirebase(adminId: string): Promise<boolean> {
+  if (isQuotaExceeded) return false;
+  try {
+    await deleteDoc(doc(db, ADMINS_COLLECTION, adminId));
+    return true;
+  } catch (error) {
+    handleFirestoreError('deleteAdmin', error);
+    return false;
+  }
+}
+
+export async function deleteSelectedAdminsFromFirebase(idsToDelete: string[]): Promise<boolean> {
+  if (isQuotaExceeded || !idsToDelete || idsToDelete.length === 0) return false;
+  try {
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < idsToDelete.length; i += CHUNK_SIZE) {
+      const chunk = idsToDelete.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach((id) => {
+        if (id) {
+          const docRef = doc(db, ADMINS_COLLECTION, id);
+          batch.delete(docRef);
+        }
+      });
+      await batch.commit();
+    }
+    return true;
+  } catch (error) {
+    handleFirestoreError('deleteSelectedAdmins', error);
+    return false;
+  }
+}
+
+export async function loadAdminsFromFirebase(): Promise<AdminUser[]> {
+  if (isQuotaExceeded) return [];
+  try {
+    const querySnap = await getDocs(collection(db, ADMINS_COLLECTION));
+    const list: AdminUser[] = [];
+    querySnap.forEach((docSnap) => {
+      list.push(docSnap.data() as AdminUser);
+    });
+    return list;
+  } catch (error) {
+    handleFirestoreError('loadAdmins', error);
+    return [];
+  }
+}
+
+export async function saveAllAdminsToFirebase(admins: AdminUser[]): Promise<boolean> {
+  if (isQuotaExceeded || !admins || admins.length === 0) return false;
+  try {
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < admins.length; i += CHUNK_SIZE) {
+      const chunk = admins.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach((admin) => {
+        if (admin && admin.id) {
+          const docRef = doc(db, ADMINS_COLLECTION, admin.id);
+          batch.set(docRef, admin, { merge: true });
+        }
+      });
+      await batch.commit();
+    }
+    return true;
+  } catch (error) {
+    handleFirestoreError('saveAllAdmins', error);
+    return false;
+  }
+}
+
+export function subscribeAdminsFromFirebase(onUpdate: (admins: AdminUser[]) => void): () => void {
+  if (isQuotaExceeded) return () => {};
+  let unsubscribe: () => void = () => {};
+  try {
+    const colRef = collection(db, ADMINS_COLLECTION);
+    unsubscribe = onSnapshot(colRef, (querySnap) => {
+      const list: AdminUser[] = [];
+      querySnap.forEach((docSnap) => {
+        if (docSnap.exists()) {
+          list.push(docSnap.data() as AdminUser);
+        }
+      });
+      if (list.length > 0) {
+        onUpdate(list);
+      }
+    }, (err) => {
+      handleFirestoreError('subscribeAdmins', err);
+    });
+  } catch (err) {
+    handleFirestoreError('subscribeAdmins', err);
+  }
+  return () => {
+    try {
+      if (unsubscribe) unsubscribe();
+    } catch (e) {}
+  };
 }
 
 /**
@@ -281,12 +451,18 @@ export async function deleteStudentFromFirebase(studentId: string): Promise<bool
 export async function deleteSelectedStudentsFromFirebase(idsToDelete: string[]): Promise<boolean> {
   if (isQuotaExceeded || !idsToDelete || idsToDelete.length === 0) return false;
   try {
-    const batch = writeBatch(db);
-    idsToDelete.forEach((id) => {
-      const docRef = doc(db, STUDENTS_COLLECTION, id);
-      batch.delete(docRef);
-    });
-    await batch.commit();
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < idsToDelete.length; i += CHUNK_SIZE) {
+      const chunk = idsToDelete.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach((id) => {
+        if (id) {
+          const docRef = doc(db, STUDENTS_COLLECTION, id);
+          batch.delete(docRef);
+        }
+      });
+      await batch.commit();
+    }
     return true;
   } catch (error) {
     handleFirestoreError('deleteSelectedStudents', error);
@@ -310,17 +486,51 @@ export async function loadStudentsFromFirebase(): Promise<StudentUser[]> {
 }
 
 export async function saveAllStudentsToFirebase(students: StudentUser[]): Promise<boolean> {
-  if (isQuotaExceeded || !students) return false;
+  if (isQuotaExceeded || !students || students.length === 0) return false;
   try {
-    const batch = writeBatch(db);
-    students.forEach((student) => {
-      const docRef = doc(db, STUDENTS_COLLECTION, student.id);
-      batch.set(docRef, student, { merge: true });
-    });
-    await batch.commit();
+    const CHUNK_SIZE = 400;
+    for (let i = 0; i < students.length; i += CHUNK_SIZE) {
+      const chunk = students.slice(i, i + CHUNK_SIZE);
+      const batch = writeBatch(db);
+      chunk.forEach((student) => {
+        if (student && student.id) {
+          const docRef = doc(db, STUDENTS_COLLECTION, student.id);
+          batch.set(docRef, student, { merge: true });
+        }
+      });
+      await batch.commit();
+    }
     return true;
   } catch (error) {
     handleFirestoreError('saveAllStudents', error);
     return false;
   }
+}
+
+export function subscribeStudentsFromFirebase(onUpdate: (students: StudentUser[]) => void): () => void {
+  if (isQuotaExceeded) return () => {};
+  let unsubscribe: () => void = () => {};
+  try {
+    const colRef = collection(db, STUDENTS_COLLECTION);
+    unsubscribe = onSnapshot(colRef, (querySnap) => {
+      const list: StudentUser[] = [];
+      querySnap.forEach((docSnap) => {
+        if (docSnap.exists()) {
+          list.push(docSnap.data() as StudentUser);
+        }
+      });
+      if (list.length > 0) {
+        onUpdate(list);
+      }
+    }, (err) => {
+      handleFirestoreError('subscribeStudents', err);
+    });
+  } catch (err) {
+    handleFirestoreError('subscribeStudents', err);
+  }
+  return () => {
+    try {
+      if (unsubscribe) unsubscribe();
+    } catch (e) {}
+  };
 }

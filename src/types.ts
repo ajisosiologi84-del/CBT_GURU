@@ -35,6 +35,15 @@ export interface TeacherUser {
   kodeGuru?: string; // Kode unik Guru Pengampu
 }
 
+export interface AdminUser {
+  id: string;
+  username: string;
+  password?: string;
+  nama: string;
+  role?: 'superadmin' | 'proktor' | 'admin' | string;
+  createdAt?: string;
+}
+
 export interface KopSekolahConfig {
   namaSekolah: string; // e.g. "SMA NEGERI 1 JAKARTA"
   dinas: string; // e.g. "DINAS PENDIDIKAN PROVINSI DKI JAKARTA"
@@ -76,6 +85,21 @@ export interface ExamScheduleConfig {
   maxCheatingAllowed?: number;
 }
 
+export interface TeacherConfigOverride {
+  kodeGuru: string;
+  mapel?: string;
+  duration?: number;
+  kkm?: number;
+  examToken?: string;
+  randomizeQuestions?: boolean;
+  randomizeOptions?: boolean;
+  allowReview?: boolean;
+  maxQuestionsToDisplay?: number;
+  maxAttempts?: number;
+  kopSekolah?: KopSekolahConfig;
+  examSchedule?: ExamScheduleConfig;
+}
+
 export interface AppConfig {
   duration: number; // in minutes
   kkm: number; // 0 - 100
@@ -84,6 +108,7 @@ export interface AppConfig {
   updatedAt?: string; // Timestamp ISO update konfigurasi
   students: StudentUser[]; // Daftar user/siswa terdaftar
   teachers?: TeacherUser[]; // Daftar user/guru terdaftar
+  admins?: AdminUser[]; // Daftar akun admin terdaftar
   mapel?: string; // e.g. 'Sosiologi'
   kodeGuru?: string; // e.g. 'GURU01' / 'G01' - Kode unik Guru Pengampu
   mapelTitle?: string; // e.g. 'Assessment TKA SMA'
@@ -102,6 +127,7 @@ export interface AppConfig {
   enableWarningAudio?: boolean; // Sakelar Suara Audio Peringatan (default true)
   examSchedule?: ExamScheduleConfig; // Detail Pengaturan Jadwal & Ketentuan Ujian
   broadcastAlert?: BroadcastAlert | null; // Pesan Peringatan Broadcast Proktor Real-time
+  teacherConfigs?: Record<string, TeacherConfigOverride>; // Multi-Guru Isolated Config Overrides
 }
 
 export type ViewState = 'login' | 'admin' | 'pre-test' | 'test' | 'result' | 'review';

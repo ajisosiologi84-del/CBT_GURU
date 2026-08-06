@@ -85,6 +85,11 @@ service cloud.firestore {
       allow delete: if isValidId(teacherId);
     }
 
+    // Admin Accounts
+    match /admin_accounts/{adminId} {
+      allow read, write: if isValidId(adminId);
+    }
+
     // Student Master Data
     match /cbt_students/{studentId} {
       allow read: if isValidId(studentId);

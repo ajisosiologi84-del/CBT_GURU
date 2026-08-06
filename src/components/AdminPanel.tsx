@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { AppConfig, Question, StudentResult, StudentUser, TeacherUser, KopSekolahConfig } from '../types';
+import { AppConfig, Question, StudentResult, StudentUser, TeacherUser, AdminUser, KopSekolahConfig, TeacherConfigOverride } from '../types';
 import { decryptResult, encryptAppBackup, decryptAppBackup } from '../utils/crypto';
 import { formatQuestionText } from '../utils/questionFormatter';
 import { generateResultsPdfReport, generateIndividualStudentPdf, generateItemAnalysisPdfReport, ItemAnalysisData, defaultKopSekolah } from '../utils/pdfGenerator';
@@ -12,7 +12,12 @@ import {
   saveAllStudentsToFirebase,
   saveTeacherToFirebase,
   deleteTeacherFromFirebase,
+  deleteSelectedTeachersFromFirebase,
   saveAllTeachersToFirebase,
+  saveAdminToFirebase,
+  deleteAdminFromFirebase,
+  deleteSelectedAdminsFromFirebase,
+  saveAllAdminsToFirebase,
 } from '../lib/firebase';
 import {
   Sliders,
@@ -48,8 +53,10 @@ import {
   CheckSquare,
   Square,
   ListChecks,
-  Image as ImageIcon,
+  Shield,
   Eye,
+  EyeOff,
+  Image as ImageIcon,
   HelpCircle,
   Printer,
   FileJson,
@@ -91,6 +98,7 @@ interface AdminPanelProps {
   config: AppConfig;
   studentResults: StudentResult[];
   adminRole?: 'admin' | 'teacher';
+  loggedInTeacher?: TeacherUser | null;
   onSaveConfig: (newConfig: AppConfig) => void;
   onSaveStudentResults: (results: StudentResult[]) => void;
   onOpenQuestionModal: (question: Question | null) => void;
@@ -121,6 +129,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   config,
   studentResults,
   adminRole = 'admin',
+  loggedInTeacher = null,
   onSaveConfig,
   onSaveStudentResults,
   onOpenQuestionModal,
@@ -266,6 +275,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   );
   const [customMapelToAdd, setCustomMapelToAdd] = useState('');
 
+  // Multi-Guru Active Scope Filter State
+  const [selectedGuruFilter, setSelectedGuruFilter] = useState<string>(
+    loggedInTeacher?.kodeGuru || 'ALL'
+  );
+
   // Question Selection & Batch State
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<number[]>([]);
   const [selectedBankMapel, setSelectedBankMapel] = useState<string>('ALL');
@@ -286,8 +300,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [currentToken, setCurrentToken] = useState<string>(config.examToken || 'SOS2026');
   const [isCopiedToken, setIsCopiedToken] = useState(false);
 
-  // User Management State (Student & Teacher)
-  const [userSubTab, setUserSubTab] = useState<'student' | 'teacher'>('student');
+  // User Management State (Student, Teacher, Admin)
+  const [userSubTab, setUserSubTab] = useState<'student' | 'teacher' | 'admin'>('student');
   const [studentSearch, setStudentSearch] = useState('');
   const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
   const [newNis, setNewNis] = useState('');
@@ -360,15 +374,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Teacher Management State
   const [teacherSearch, setTeacherSearch] = useState('');
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [isAddTeacherModalOpen, setIsAddTeacherModalOpen] = useState(false);
   const [newNip, setNewNip] = useState('');
   const [newTeacherNama, setNewTeacherNama] = useState('');
   const [newTeacherMapel, setNewTeacherMapel] = useState('');
   const [newTeacherKodeGuru, setNewTeacherKodeGuru] = useState('');
 
-  // Edit Student & Teacher Modals
+  // Admin Management State
+  const [adminSearch, setAdminSearch] = useState('');
+  const [isAddAdminModalOpen, setIsAddAdminModalOpen] = useState(false);
+  const [newAdminUsername, setNewAdminUsername] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [newAdminNama, setNewAdminNama] = useState('');
+  const [newAdminRole, setNewAdminRole] = useState<'superadmin' | 'proktor' | 'admin'>('admin');
+  const [showPasswordMap, setShowPasswordMap] = useState<{ [key: string]: boolean }>({});
+
+  // Edit Student, Teacher & Admin Modals
   const [editingStudent, setEditingStudent] = useState<StudentUser | null>(null);
   const [editingTeacher, setEditingTeacher] = useState<TeacherUser | null>(null);
+  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
+  const [selectedAdminIds, setSelectedAdminIds] = useState<string[]>([]);
 
   // Kop Sekolah & Signature Modal State
   const [isKopModalOpen, setIsKopModalOpen] = useState(false);
@@ -381,15 +407,97 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const cbtFileInputRef = useRef<HTMLInputElement>(null);
   const studentFileInputRef = useRef<HTMLInputElement>(null);
   const teacherFileInputRef = useRef<HTMLInputElement>(null);
+  const adminFileInputRef = useRef<HTMLInputElement>(null);
   const backupFileInputRef = useRef<HTMLInputElement>(null);
 
   const studentsList: StudentUser[] = config.students || [];
-  const teachersList: TeacherUser[] = config.teachers || [];
+  const teacherTargetKg = (loggedInTeacher?.kodeGuru || loggedInTeacher?.nip || 'GURU01').toUpperCase();
+  const displayStudentsList: StudentUser[] = React.useMemo(() => {
+    const all = config.students || [];
+    if (loggedInTeacher || adminRole === 'teacher') {
+      return all.filter((s) => (s.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase() === teacherTargetKg);
+    }
+    if (selectedGuruFilter && selectedGuruFilter !== 'ALL') {
+      return all.filter((s) => (s.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase() === selectedGuruFilter.toUpperCase());
+    }
+    return all;
+  }, [config.students, config.kodeGuru, loggedInTeacher, adminRole, teacherTargetKg, selectedGuruFilter]);
 
-  // Sync internal state with config prop when config changes (e.g. from restore, firebase sync, mapel switch)
   React.useEffect(() => {
-    if (config) {
+    if (loggedInTeacher || adminRole === 'teacher') {
+      setUserSubTab('student');
+    }
+  }, [loggedInTeacher, adminRole]);
+  const teachersList: TeacherUser[] = (config.teachers && config.teachers.length > 0)
+    ? config.teachers
+    : [
+        { id: 't1', nip: '198501152010011002', nama: 'Drs. Aji Sosiologi, M.Pd', mapel: 'Sosiologi', kodeGuru: 'GURU01' },
+        { id: 't2', nip: '198803122012022001', nama: 'Dra. Rini Wulandari, M.Si', mapel: 'Geografi', kodeGuru: 'GURU02' },
+        { id: 't3', nip: '199005202015031003', nama: 'Budi Santoso, S.Pd', mapel: 'Ekonomi', kodeGuru: 'GURU03' },
+      ];
+  const adminsList: AdminUser[] = config.admins || [];
+
+  const activeTeacherObj = React.useMemo(() => {
+    if (loggedInTeacher) return loggedInTeacher;
+    if (selectedGuruFilter && selectedGuruFilter !== 'ALL') {
+      return (
+        teachersList.find(
+          (t) =>
+            (t.kodeGuru && t.kodeGuru.toUpperCase() === selectedGuruFilter.toUpperCase()) ||
+            t.nip === selectedGuruFilter
+        ) || null
+      );
+    }
+    return null;
+  }, [loggedInTeacher, selectedGuruFilter, teachersList]);
+
+  // Sync Multi-Guru Scope Filter to Sub-Tab Filters
+  React.useEffect(() => {
+    if (selectedGuruFilter) {
+      setSelectedBankKodeGuru(selectedGuruFilter);
+      setStudentKodeGuruFilter(selectedGuruFilter);
+      setRekapKodeGuruFilter(selectedGuruFilter);
+    }
+  }, [selectedGuruFilter]);
+
+  React.useEffect(() => {
+    if (loggedInTeacher?.kodeGuru) {
+      setSelectedGuruFilter(loggedInTeacher.kodeGuru);
+      setSelectedBankKodeGuru(loggedInTeacher.kodeGuru);
+      setStudentKodeGuruFilter(loggedInTeacher.kodeGuru);
+      setRekapKodeGuruFilter(loggedInTeacher.kodeGuru);
+    }
+  }, [loggedInTeacher]);
+
+  // Sync internal state with config prop and selected teacher override when config or selected filter changes
+  React.useEffect(() => {
+    const targetKg = selectedGuruFilter !== 'ALL' ? selectedGuruFilter : (loggedInTeacher?.kodeGuru || null);
+    const tConfig = targetKg && config.teacherConfigs?.[targetKg];
+
+    if (tConfig) {
+      if (tConfig.duration !== undefined) setDurationInput(tConfig.duration);
+      if (tConfig.kkm !== undefined) setKkmInput(tConfig.kkm);
+      if (tConfig.examToken !== undefined) setCurrentToken(tConfig.examToken);
+      if (tConfig.maxQuestionsToDisplay !== undefined) setMaxQuestionsInput(tConfig.maxQuestionsToDisplay);
+      if (tConfig.maxAttempts !== undefined) setMaxAttemptsInput(tConfig.maxAttempts);
+      if (tConfig.randomizeQuestions !== undefined) setRandomizeQuestionsInput(tConfig.randomizeQuestions);
+      if (tConfig.randomizeOptions !== undefined) setRandomizeOptionsInput(tConfig.randomizeOptions);
+      if (tConfig.mapel !== undefined) setMapelInput(tConfig.mapel);
+      if (tConfig.kopSekolah) setKopForm(tConfig.kopSekolah);
+      if (tConfig.examSchedule) {
+        if (tConfig.examSchedule.startTime !== undefined) setScheduleStartTime(tConfig.examSchedule.startTime || '');
+        if (tConfig.examSchedule.endTime !== undefined) setScheduleEndTime(tConfig.examSchedule.endTime || '');
+        if (tConfig.examSchedule.sessionStatus) setSessionStatus(tConfig.examSchedule.sessionStatus);
+        if (tConfig.examSchedule.lateToleranceMinutes !== undefined) setLateTolerance(tConfig.examSchedule.lateToleranceMinutes);
+        if (tConfig.examSchedule.allowReviewAfterFinish !== undefined) setAllowReviewAfterFinish(tConfig.examSchedule.allowReviewAfterFinish);
+        if (tConfig.examSchedule.showScoreImmediately !== undefined) setShowScoreImmediately(tConfig.examSchedule.showScoreImmediately);
+        if (tConfig.examSchedule.strictAntiCheating !== undefined) setStrictAntiCheating(tConfig.examSchedule.strictAntiCheating);
+        if (tConfig.examSchedule.maxCheatingAllowed !== undefined) setMaxCheatingAllowed(tConfig.examSchedule.maxCheatingAllowed);
+      }
+    } else if (config) {
       if (config.examToken) setCurrentToken(config.examToken);
+      if (config.duration) setDurationInput(config.duration);
+      if (config.kkm !== undefined) setKkmInput(config.kkm);
       if (config.mapel) setMapelInput(config.mapel);
       if (config.kodeGuru) setKodeGuruInput(config.kodeGuru);
       if (config.mapelTitle) setMapelTitleInput(config.mapelTitle);
@@ -397,49 +505,95 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (config.driveUploadUrl !== undefined) setDriveUploadUrlInput(config.driveUploadUrl || '');
       if (config.youtubeGuideUrl !== undefined) setYoutubeGuideUrlInput(config.youtubeGuideUrl || '');
       if (config.mapelList && config.mapelList.length > 0) setMapelList(config.mapelList);
+      if (config.examSchedule) {
+        setScheduleStartTime(config.examSchedule.startTime || '');
+        setScheduleEndTime(config.examSchedule.endTime || '');
+        setSessionStatus(config.examSchedule.sessionStatus || 'ACTIVE');
+        setLateTolerance(config.examSchedule.lateToleranceMinutes || 15);
+        setAllowReviewAfterFinish(config.examSchedule.allowReviewAfterFinish !== false);
+        setShowScoreImmediately(config.examSchedule.showScoreImmediately !== false);
+        setStrictAntiCheating(config.examSchedule.strictAntiCheating !== false);
+        setMaxCheatingAllowed(config.examSchedule.maxCheatingAllowed || 3);
+      }
     }
-  }, [
-    config.examToken,
-    config.mapel,
-    config.kodeGuru,
-    config.mapelTitle,
-    config.subTitle,
-    config.driveUploadUrl,
-    config.youtubeGuideUrl,
-    config.mapelList,
-  ]);
+  }, [selectedGuruFilter, loggedInTeacher, config]);
 
   // --- BACKUP & RESTORE APP DATA HANDLERS ---
   const handleBackupAppData = () => {
     try {
       const activeToken = currentToken || config.examToken || 'SOS2026';
-      const backupPayload = {
-        appName: 'CBT_GURUAI',
-        version: '2.0',
-        exportedAt: new Date().toISOString(),
-        config: {
-          ...config,
-          examToken: activeToken,
-        },
-        studentResults,
-      };
+      const targetKg = loggedInTeacher?.kodeGuru || (selectedGuruFilter !== 'ALL' ? selectedGuruFilter : null);
+
+      let backupPayload: any;
+      let filename: string;
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+
+      if (targetKg) {
+        const teacherQuestions = config.questions.filter(
+          (q) => (q.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase() === targetKg.toUpperCase()
+        );
+        const teacherResults = studentResults.filter(
+          (r) => (r.studentInfo.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase() === targetKg.toUpperCase()
+        );
+        const teacherStudents = (config.students || []).filter(
+          (s) => (s.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase() === targetKg.toUpperCase()
+        );
+        const teacherConfigData = config.teacherConfigs?.[targetKg];
+
+        backupPayload = {
+          appName: 'CBT_GURUAI_TEACHER_BACKUP',
+          version: '2.0',
+          exportedAt: new Date().toISOString(),
+          kodeGuru: targetKg,
+          teacherInfo: activeTeacherObj,
+          config: {
+            ...config,
+            examToken: activeToken,
+            questions: teacherQuestions,
+            students: teacherStudents,
+            mapel: activeTeacherObj?.mapel || config.mapel,
+            kodeGuru: targetKg,
+            kopSekolah: teacherConfigData?.kopSekolah || config.kopSekolah,
+            examSchedule: teacherConfigData?.examSchedule || config.examSchedule,
+          },
+          teacherConfigData,
+          studentResults: teacherResults,
+        };
+
+        const mapelClean = (activeTeacherObj?.mapel || config.mapel || 'Mapel').replace(/[^a-zA-Z0-9]/g, '_');
+        filename = `BACKUP_CBT_GURU_${targetKg}_${mapelClean}_${dateStr}_${timeStr}.json`;
+      } else {
+        backupPayload = {
+          appName: 'CBT_GURUAI',
+          version: '2.0',
+          exportedAt: new Date().toISOString(),
+          config: {
+            ...config,
+            examToken: activeToken,
+          },
+          studentResults,
+        };
+        filename = `BACKUP_SUPERADMIN_CBT_SEMUA_GURU_${dateStr}_${timeStr}.json`;
+      }
 
       const encryptedContent = encryptAppBackup(backupPayload);
       const blob = new Blob([encryptedContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
 
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
-
       link.href = url;
-      link.download = `BACKUP_TERENKRIPSI_CBT_GURUAI_${dateStr}_${timeStr}.json`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showAlert('Backup Seluruh Data Aplikasi CBT GURUAI berhasil dienkripsi dan diunduh! Simpan file terenkripsi (.json) ini di tempat aman.');
+      if (targetKg) {
+        showAlert(`Backup Data Terisolasi untuk Akun Guru "${activeTeacherObj?.nama || targetKg}" (${backupPayload.config.questions.length} Soal & ${backupPayload.studentResults.length} Rekap Nilai) Berhasil Diunduh!`);
+      } else {
+        showAlert('Backup Seluruh Data Sistem (Semua Akun Guru) berhasil dienkripsi dan diunduh! Simpan file terenkripsi (.json) ini di tempat aman.');
+      }
     } catch (e) {
       console.error(e);
       showAlert('Gagal membuat file backup data terenkripsi!');
@@ -514,11 +668,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const triggerBackupAppDataWithAnimation = () => {
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
-    const fileName = `BACKUP_TERENKRIPSI_CBT_GURUAI_${dateStr}_${timeStr}.json`;
+    const targetKg = loggedInTeacher?.kodeGuru || (selectedGuruFilter !== 'ALL' ? selectedGuruFilter : null);
+    const mapelClean = (activeTeacherObj?.mapel || config.mapel || 'Mapel').replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = targetKg
+      ? `BACKUP_CBT_GURU_${targetKg}_${mapelClean}_${dateStr}_${timeStr}.json`
+      : `BACKUP_SUPERADMIN_CBT_SEMUA_GURU_${dateStr}_${timeStr}.json`;
 
     setDownloadModalConfig({
-      title: 'Mengunduh Backup Data Sistem',
-      subtitle: 'Mencadangkan seluruh bank soal, data user, dan token ujian...',
+      title: targetKg ? `Mengunduh Backup Data Guru (${activeTeacherObj?.nama || targetKg})` : 'Mengunduh Backup Data Sistem',
+      subtitle: targetKg ? `Mencadangkan bank soal, rekap nilai & jadwal khusus Akun Guru Kode "${targetKg}"...` : 'Mencadangkan seluruh bank soal, data user, dan token ujian...',
       fileName: fileName,
       fileType: 'json',
       onCompleteAction: handleBackupAppData,
@@ -541,31 +699,93 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           return;
         }
 
+        const isTeacherBackup = parsed.appName === 'CBT_GURUAI_TEACHER_BACKUP' || !!parsed.kodeGuru;
         const restoredConfig = parsed.config || (parsed.questions ? parsed : null);
+
         if (!restoredConfig || !Array.isArray(restoredConfig.questions)) {
           showAlert('File backup tidak memiliki struktur data Bank Soal yang valid!');
           return;
         }
 
-        const restoredExamToken = restoredConfig.examToken || config.examToken || 'SOS2026';
-        const finalRestoredConfig = {
-          ...restoredConfig,
-          examToken: restoredExamToken,
-        };
+        if (isTeacherBackup) {
+          const restoredKg = (parsed.kodeGuru || restoredConfig.kodeGuru || 'GURU01').toUpperCase();
+          
+          showConfirm(
+            'Memulihkan Backup Data Spesifik Guru?',
+            `File ini berisi data terenkripsi untuk Akun Guru Kode "${restoredKg}". Sistem akan memperbarui Bank Soal, Rekap Nilai, dan Jadwal Ujian khusus untuk Guru Kode "${restoredKg}" tanpa menghapus data guru lainnya. Lanjutkan?`,
+            () => {
+              // 1. Filter out existing questions for this teacher and add restored questions
+              const otherQuestions = config.questions.filter(
+                (q) => (q.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase() !== restoredKg
+              );
+              const newQuestions = restoredConfig.questions.map((q: any) => ({
+                ...q,
+                kodeGuru: restoredKg,
+              }));
+              const mergedQuestions = [...otherQuestions, ...newQuestions];
 
-        showConfirm(
-          'Memulihkan Seluruh Data Backup Terenkripsi?',
-          `Apakah Anda yakin ingin memulihkan (restore) seluruh data aplikasi dari file backup terenkripsi ini? Seluruh bank soal, data user, dan token ujian ("${restoredExamToken}") akan disinkronkan.`,
-          () => {
-            onSaveConfig(finalRestoredConfig);
-            setCurrentToken(restoredExamToken);
-            if (Array.isArray(parsed.studentResults)) {
-              onSaveStudentResults(parsed.studentResults);
+              // 2. Filter out existing results for this teacher and add restored results
+              const otherResults = studentResults.filter(
+                (r) => (r.studentInfo.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase() !== restoredKg
+              );
+              const newResults = Array.isArray(parsed.studentResults)
+                ? parsed.studentResults.map((r: any) => ({
+                    ...r,
+                    studentInfo: {
+                      ...r.studentInfo,
+                      kodeGuru: restoredKg,
+                    },
+                  }))
+                : [];
+              const mergedResults = [...otherResults, ...newResults];
+
+              // 3. Update teacherConfigs
+              const restoredTeacherConfigOverride: TeacherConfigOverride = {
+                kodeGuru: restoredKg,
+                mapel: restoredConfig.mapel,
+                duration: restoredConfig.duration,
+                kkm: restoredConfig.kkm,
+                examToken: restoredConfig.examToken,
+                kopSekolah: restoredConfig.kopSekolah,
+                examSchedule: restoredConfig.examSchedule,
+              };
+
+              const updatedTeacherConfigs = {
+                ...(config.teacherConfigs || {}),
+                [restoredKg]: restoredTeacherConfigOverride,
+              };
+
+              onSaveConfig({
+                ...config,
+                questions: mergedQuestions,
+                teacherConfigs: updatedTeacherConfigs,
+              });
+              onSaveStudentResults(mergedResults);
+              showAlert(`Sukses! Data untuk Akun Guru Kode "${restoredKg}" (${newQuestions.length} Soal & ${newResults.length} Rekap Nilai) berhasil dipulihkan!`);
             }
-            showAlert(`Sukses! Seluruh data aplikasi & paket soal dengan Token "${restoredExamToken}" berhasil dipulihkan dari file backup terenkripsi.`);
-          },
-          true
-        );
+          );
+        } else {
+          // Full Superadmin Restore
+          const restoredExamToken = restoredConfig.examToken || config.examToken || 'SOS2026';
+          const finalRestoredConfig = {
+            ...restoredConfig,
+            examToken: restoredExamToken,
+          };
+
+          showConfirm(
+            'Memulihkan Seluruh Data Sistem (Semua Akun Guru)?',
+            `Apakah Anda yakin ingin memulihkan (restore) seluruh data aplikasi dari file backup terenkripsi ini? Seluruh bank soal, data user, dan token ujian ("${restoredExamToken}") akan disinkronkan.`,
+            () => {
+              onSaveConfig(finalRestoredConfig);
+              setCurrentToken(restoredExamToken);
+              if (Array.isArray(parsed.studentResults)) {
+                onSaveStudentResults(parsed.studentResults);
+              }
+              showAlert(`Sukses! Seluruh data aplikasi & paket soal dengan Token "${restoredExamToken}" berhasil dipulihkan dari file backup terenkripsi.`);
+            },
+            true
+          );
+        }
       } catch (err: any) {
         console.error(err);
         showAlert(err.message || 'Gagal membaca/mendekripsi file backup! Pastikan file adalah backup terenkripsi resmi CBT GURUAI.');
@@ -577,9 +797,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleSaveKopSekolah = (e: React.FormEvent) => {
     e.preventDefault();
+    const targetKg = loggedInTeacher?.kodeGuru || (selectedGuruFilter !== 'ALL' ? selectedGuruFilter : (config.kodeGuru || 'GURU01'));
+    const existingTConfig = config.teacherConfigs?.[targetKg] || { kodeGuru: targetKg };
+    
+    const updatedTConfig: TeacherConfigOverride = {
+      ...existingTConfig,
+      kopSekolah: kopForm,
+    };
+
     onSaveConfig({
       ...config,
       kopSekolah: kopForm,
+      teacherConfigs: {
+        ...(config.teacherConfigs || {}),
+        [targetKg]: updatedTConfig,
+      },
     });
     setIsKopModalOpen(false);
     showAlert('Pengaturan Kop Sekolah & Tanda Tangan Guru berhasil disimpan!');
@@ -588,6 +820,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   // General & Schedule Settings Handler
   const handleSaveGeneralConfig = () => {
     if (durationInput > 0 && kkmInput >= 0 && kkmInput <= 100) {
+      const targetKg = loggedInTeacher?.kodeGuru || (selectedGuruFilter !== 'ALL' ? selectedGuruFilter : (config.kodeGuru || 'GURU01'));
+      const existingTConfig = config.teacherConfigs?.[targetKg] || { kodeGuru: targetKg };
+
+      const updatedTConfig: TeacherConfigOverride = {
+        ...existingTConfig,
+        duration: durationInput,
+        kkm: kkmInput,
+        maxQuestionsToDisplay: Math.max(0, maxQuestionsInput),
+        maxAttempts: Math.max(1, maxAttemptsInput),
+        randomizeQuestions: randomizeQuestionsInput,
+        randomizeOptions: randomizeOptionsInput,
+      };
+
       onSaveConfig({
         ...config,
         duration: durationInput,
@@ -596,8 +841,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         maxAttempts: Math.max(1, maxAttemptsInput),
         randomizeQuestions: randomizeQuestionsInput,
         randomizeOptions: randomizeOptionsInput,
+        teacherConfigs: {
+          ...(config.teacherConfigs || {}),
+          [targetKg]: updatedTConfig,
+        },
       });
-      showAlert('Pengaturan umum ujian berhasil disimpan!');
+      showAlert(`Pengaturan umum ujian untuk Akun Guru Kode "${targetKg}" berhasil disimpan!`);
     } else {
       showAlert('Nilai durasi atau KKM tidak valid!');
     }
@@ -609,16 +858,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       showAlert('Nilai Durasi atau KKM tidak valid!');
       return;
     }
-    onSaveConfig({
-      ...config,
+
+    const targetKg = loggedInTeacher?.kodeGuru || (selectedGuruFilter !== 'ALL' ? selectedGuruFilter : (config.kodeGuru || 'GURU01'));
+    const activeTeacher = teachersList.find((t) => (t.kodeGuru || t.nip).toUpperCase() === targetKg.toUpperCase());
+
+    const updatedTeacherConfig: TeacherConfigOverride = {
+      kodeGuru: targetKg,
+      mapel: mapelInput || activeTeacher?.mapel || 'Sosiologi',
       duration: durationInput,
       kkm: kkmInput,
-      maxQuestionsToDisplay: Math.max(0, maxQuestionsInput),
-      maxAttempts: Math.max(1, maxAttemptsInput),
+      examToken: currentToken,
       randomizeQuestions: randomizeQuestionsInput,
       randomizeOptions: randomizeOptionsInput,
-      enableWarningAudio,
-      customWarningAudioUrl: customWarningAudioUrl.trim() || undefined,
+      maxQuestionsToDisplay: Math.max(0, maxQuestionsInput),
+      maxAttempts: Math.max(1, maxAttemptsInput),
+      kopSekolah: kopForm,
       examSchedule: {
         startTime: scheduleStartTime,
         endTime: scheduleEndTime,
@@ -629,8 +883,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         strictAntiCheating,
         maxCheatingAllowed,
       },
+    };
+
+    const updatedTeacherConfigs = {
+      ...(config.teacherConfigs || {}),
+      [targetKg]: updatedTeacherConfig,
+    };
+
+    onSaveConfig({
+      ...config,
+      duration: durationInput,
+      kkm: kkmInput,
+      examToken: currentToken,
+      maxQuestionsToDisplay: Math.max(0, maxQuestionsInput),
+      maxAttempts: Math.max(1, maxAttemptsInput),
+      randomizeQuestions: randomizeQuestionsInput,
+      randomizeOptions: randomizeOptionsInput,
+      enableWarningAudio,
+      customWarningAudioUrl: customWarningAudioUrl.trim() || undefined,
+      examSchedule: updatedTeacherConfig.examSchedule,
+      teacherConfigs: updatedTeacherConfigs,
     });
-    showAlert('Semua Pengaturan Jadwal, Durasi, KKM, & Ketentuan Ujian Berhasil Disimpan!');
+    showAlert(`Semua Pengaturan Jadwal, Durasi, KKM, Token & Ketentuan Ujian untuk Akun Guru "${activeTeacher?.nama || targetKg}" Berhasil Disimpan!`);
   };
 
   // Real-time Broadcast Warning Handler (Point 2)
@@ -1077,12 +1351,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleExportRekapToExcel = () => {
-    if (studentResults.length === 0) {
-      showAlert('Belum ada data rekap nilai siswa yang didekripsi!');
+    if (filteredStudentResults.length === 0) {
+      showAlert('Belum ada data rekap nilai siswa yang sesuai dengan filter Guru/Mata Pelajaran saat ini!');
       return;
     }
 
     const kop = config.kopSekolah || defaultKopSekolah;
+    const activeTeacherName = activeTeacherObj ? activeTeacherObj.nama : (kop.namaGuru || defaultKopSekolah.namaGuru);
+    const activeTeacherNip = activeTeacherObj ? activeTeacherObj.nip : (kop.nipGuru || defaultKopSekolah.nipGuru);
+    const activeMapel = activeTeacherObj ? activeTeacherObj.mapel : (config.mapel || 'Sosiologi');
+    const activeKodeGuru = activeTeacherObj ? (activeTeacherObj.kodeGuru || 'GURU01') : (selectedGuruFilter !== 'ALL' ? selectedGuruFilter : (config.kodeGuru || 'GURU01'));
 
     const ws_data: any[][] = [
       [(kop.dinas || defaultKopSekolah.dinas).toUpperCase()],
@@ -1090,18 +1368,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       [kop.alamat || defaultKopSekolah.alamat],
       [kop.teleponWeb || ''],
       [''],
-      ['DAFTAR HASIL JAWABAN & REKAPITULASI NILAI UJIAN CBT GURUAI'],
-      [`Mata Pelajaran: ${config.mapel || 'Sosiologi'} | KKM: ${config.kkm} | Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`],
+      ['DAFTAR HASIL JAWABAN & REKAPITULASI NILAI UJIAN CBT MULTI GURU'],
+      [`Mata Pelajaran: ${activeMapel} | Kode Guru: ${activeKodeGuru} | Guru Pengampu: ${activeTeacherName} | KKM: ${config.kkm} | Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`],
       [''],
-      ['No', 'NIS / No. Peserta', 'Nama Lengkap Siswa', 'Mata Pelajaran', 'Jawaban Benar', 'Jawaban Salah', 'Total Soal', 'Nilai Akhir', 'KKM', 'Status Lulus', 'Pelanggaran', 'Waktu Selesai'],
+      ['No', 'NIS / No. Peserta', 'Nama Lengkap Siswa', 'Mata Pelajaran', 'Kode Guru', 'Jawaban Benar', 'Jawaban Salah', 'Total Soal', 'Nilai Akhir', 'KKM', 'Status Lulus', 'Pelanggaran', 'Waktu Selesai'],
     ];
 
-    studentResults.forEach((r, i) => {
+    filteredStudentResults.forEach((r, i) => {
       ws_data.push([
         i + 1,
         r.studentInfo.noPeserta,
         r.studentInfo.name,
         r.studentInfo.mapel,
+        r.studentInfo.kodeGuru || activeKodeGuru,
         r.correctCount,
         r.incorrectCount,
         r.totalQuestions,
@@ -1114,31 +1393,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
 
     // Summary Statistics
-    const avgScore = Math.round(studentResults.reduce((sum, r) => sum + r.score, 0) / studentResults.length);
-    const maxScore = Math.max(...studentResults.map((r) => r.score));
-    const minScore = Math.min(...studentResults.map((r) => r.score));
+    const avgScore = Math.round(filteredStudentResults.reduce((sum, r) => sum + r.score, 0) / filteredStudentResults.length);
+    const maxScore = Math.max(...filteredStudentResults.map((r) => r.score));
+    const minScore = Math.min(...filteredStudentResults.map((r) => r.score));
+    const totalPassed = filteredStudentResults.filter((r) => r.isPassed).length;
 
     ws_data.push(['']);
-    ws_data.push(['SUMMARY STATISTIK UJIAN:']);
-    ws_data.push(['Rata-Rata Nilai Class', avgScore]);
+    ws_data.push(['SUMMARY STATISTIK UJIAN GURU:']);
+    ws_data.push(['Guru Pengampu', activeTeacherName]);
+    ws_data.push(['Mata Pelajaran', activeMapel]);
+    ws_data.push(['Rata-Rata Nilai', avgScore]);
     ws_data.push(['Nilai Tertinggi', maxScore]);
     ws_data.push(['Nilai Terendah', minScore]);
-    ws_data.push(['Total Peserta Ujian', studentResults.length]);
+    ws_data.push(['Total Peserta Ujian', filteredStudentResults.length]);
+    ws_data.push(['Jumlah Peserta Lulus', `${totalPassed} Siswa (${Math.round((totalPassed / filteredStudentResults.length) * 100)}%)`]);
 
     // Signature Block at Bottom
     ws_data.push(['']);
     ws_data.push(['', '', '', '', '', '', '', '', 'Mengetahui,', '', kop.kotaTanggal || defaultKopSekolah.kotaTanggal]);
-    ws_data.push(['', '', '', '', '', '', '', '', 'Kepala Sekolah', '', kop.jabatanGuru || defaultKopSekolah.jabatanGuru]);
+    ws_data.push(['', '', '', '', '', '', '', '', 'Kepala Sekolah', '', 'Guru Mata Pelajaran']);
     ws_data.push(['']);
     ws_data.push(['']);
-    ws_data.push(['', '', '', '', '', '', '', '', kop.namaKepalaSekolah || defaultKopSekolah.namaKepalaSekolah, '', kop.namaGuru || defaultKopSekolah.namaGuru]);
-    ws_data.push(['', '', '', '', '', '', '', '', `NIP. ${kop.nipKepalaSekolah || defaultKopSekolah.nipKepalaSekolah}`, '', `NIP. ${kop.nipGuru || defaultKopSekolah.nipGuru}`]);
+    ws_data.push(['', '', '', '', '', '', '', '', kop.namaKepalaSekolah || defaultKopSekolah.namaKepalaSekolah, '', activeTeacherName]);
+    ws_data.push(['', '', '', '', '', '', '', '', `NIP. ${kop.nipKepalaSekolah || defaultKopSekolah.nipKepalaSekolah}`, '', `NIP. ${activeTeacherNip}`]);
 
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rekap_Hasil_CBT');
-    const cleanMapel = (config.mapel || 'Sosiologi').replace(/[^a-zA-Z0-9]/g, '_');
-    XLSX.writeFile(wb, `LAPORAN_HASIL_CBT_${cleanMapel}_${Date.now()}.xlsx`);
+    const cleanMapel = activeMapel.replace(/[^a-zA-Z0-9]/g, '_');
+    XLSX.writeFile(wb, `LAPORAN_REKAP_CBT_${activeKodeGuru}_${cleanMapel}_${Date.now()}.xlsx`);
   };
 
   const handleDeleteStudentResult = (id: string) => {
@@ -1334,14 +1617,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   // Derived Student Counts & Data
-  const uniqueClasses = Array.from(new Set(studentsList.map((s) => s.kelas))).filter(Boolean);
-  const activeStudentsCount = studentsList.filter((s) => s.isActive !== false).length;
-  const inactiveStudentsCount = studentsList.length - activeStudentsCount;
+  const uniqueClasses = Array.from(new Set(displayStudentsList.map((s) => s.kelas))).filter(Boolean);
+  const activeStudentsCount = displayStudentsList.filter((s) => s.isActive !== false).length;
+  const inactiveStudentsCount = displayStudentsList.length - activeStudentsCount;
 
   // --- STUDENT ACTIVE EXAM SELECTION HANDLERS ---
   const handleToggleStudentActive = (id: string) => {
     let targetStudent: StudentUser | null = null;
-    const updated = studentsList.map((s) => {
+    const updated = (config.students || []).map((s) => {
       if (s.id === id) {
         const currentActive = s.isActive !== false;
         targetStudent = { ...s, isActive: !currentActive };
@@ -1356,12 +1639,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleSetClassActiveStatus = (kelasName: string, isActive: boolean, exclusivelyThisClass: boolean = false) => {
-    const updated = studentsList.map((s) => {
-      if (s.kelas === kelasName) {
-        return { ...s, isActive };
-      }
-      if (exclusivelyThisClass) {
-        return { ...s, isActive: false };
+    const displayIds = new Set(displayStudentsList.map((s) => s.id));
+    const updated = (config.students || []).map((s) => {
+      if (displayIds.has(s.id)) {
+        if (s.kelas === kelasName) {
+          return { ...s, isActive };
+        }
+        if (exclusivelyThisClass) {
+          return { ...s, isActive: false };
+        }
       }
       return s;
     });
@@ -1376,10 +1662,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleSetAllStudentsActive = (isActive: boolean) => {
-    const updated = studentsList.map((s) => ({ ...s, isActive }));
+    const displayIds = new Set(displayStudentsList.map((s) => s.id));
+    const updated = (config.students || []).map((s) => {
+      if (displayIds.has(s.id)) {
+        return { ...s, isActive };
+      }
+      return s;
+    });
     onSaveConfig({ ...config, students: updated });
     saveAllStudentsToFirebase(updated);
-    showAlert(`Semua siswa (${studentsList.length}) berhasil di-${isActive ? 'aktifkan' : 'nonaktifkan'} untuk ujian.`);
+    showAlert(`Semua siswa (${displayStudentsList.length}) berhasil di-${isActive ? 'aktifkan' : 'nonaktifkan'} untuk ujian.`);
   };
 
   const handleBatchSetStudentActive = (isActive: boolean) => {
@@ -1575,6 +1867,204 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   };
 
+  const handleDeleteSelectedTeachers = () => {
+    if (selectedTeacherIds.length === 0) {
+      showAlert('Pilih/centang minimal 1 akun guru yang akan dihapus!');
+      return;
+    }
+    showConfirm(
+      `Hapus ${selectedTeacherIds.length} Akun Guru Terpilih?`,
+      `Apakah Anda yakin ingin menghapus ${selectedTeacherIds.length} akun guru yang dicentang? Data yang dihapus juga akan dihapus dari Firebase.`,
+      () => {
+        const updated = teachersList.filter((t) => !selectedTeacherIds.includes(t.id));
+        onSaveConfig({ ...config, teachers: updated });
+        deleteSelectedTeachersFromFirebase(selectedTeacherIds);
+        setSelectedTeacherIds([]);
+        showAlert(`${selectedTeacherIds.length} data akun guru berhasil dihapus dari sistem & Firebase.`);
+      },
+      true
+    );
+  };
+
+  // --- ADMIN MANAGEMENT HANDLERS ---
+  const handleDownloadAdminTemplate = () => {
+    const templateData = [
+      {
+        Username: 'adminproktor01',
+        Password: 'ProktorPass2026',
+        Nama: 'Haji Ahmad, S.Kom',
+        Role: 'proktor',
+      },
+      {
+        Username: 'adminutama',
+        Password: 'AdminMaster2026',
+        Nama: 'Drs. Supriyadi, M.T',
+        Role: 'superadmin',
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template_Admin');
+    XLSX.writeFile(wb, 'TEMPLATE_DATA_ADMIN_CBT.xlsx');
+  };
+
+  const handleAddAdminManual = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminUsername.trim() || !newAdminPassword.trim() || !newAdminNama.trim()) {
+      showAlert('Harap isi Username, Password, dan Nama Lengkap Admin!');
+      return;
+    }
+
+    const exists = adminsList.some((a) => a.username.toLowerCase() === newAdminUsername.trim().toLowerCase());
+    if (exists) {
+      showAlert(`Username Admin "${newAdminUsername}" sudah terdaftar dalam sistem!`);
+      return;
+    }
+
+    const newAdmin: AdminUser = {
+      id: `adm-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      username: newAdminUsername.trim(),
+      password: newAdminPassword.trim(),
+      nama: newAdminNama.trim(),
+      role: newAdminRole,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [...adminsList, newAdmin];
+    onSaveConfig({ ...config, admins: updated });
+    saveAdminToFirebase(newAdmin);
+
+    setNewAdminUsername('');
+    setNewAdminPassword('');
+    setNewAdminNama('');
+    setNewAdminRole('admin');
+    setIsAddAdminModalOpen(false);
+    showAlert(`Akun Admin "${newAdmin.nama}" (Role: ${newAdmin.role}) berhasil ditambahkan & tersimpan ke Firebase!`);
+  };
+
+  const handleUpdateAdminManual = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAdmin) return;
+    if (!editingAdmin.username.trim() || !editingAdmin.password?.trim() || !editingAdmin.nama.trim()) {
+      showAlert('Harap isi Username, Password, dan Nama Admin!');
+      return;
+    }
+
+    const updatedAdmin: AdminUser = {
+      ...editingAdmin,
+      username: editingAdmin.username.trim(),
+      password: editingAdmin.password.trim(),
+      nama: editingAdmin.nama.trim(),
+      role: editingAdmin.role || 'admin',
+    };
+
+    const updated = adminsList.map((a) => (a.id === updatedAdmin.id ? updatedAdmin : a));
+    onSaveConfig({ ...config, admins: updated });
+    saveAdminToFirebase(updatedAdmin);
+
+    setEditingAdmin(null);
+    showAlert(`Data Akun Admin "${updatedAdmin.nama}" berhasil diperbarui & tersimpan di Firebase!`);
+  };
+
+  const handleAdminExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json<any>(ws);
+
+        const newAdmins: AdminUser[] = [];
+        let countAdded = 0;
+
+        data.forEach((row, idx) => {
+          const uVal = String(row['Username'] || row['username'] || row['User'] || '').trim();
+          const pVal = String(row['Password'] || row['password'] || row['Pass'] || 'JuniorCBT2026').trim();
+          const namaVal = String(row['Nama'] || row['nama'] || row['Nama_Admin'] || row['Nama Lengkap'] || '').trim();
+          const roleVal = String(row['Role'] || row['role'] || row['Jabatan'] || 'admin').trim().toLowerCase();
+
+          if (uVal && pVal && namaVal) {
+            const isDup =
+              adminsList.some((a) => a.username.toLowerCase() === uVal.toLowerCase()) ||
+              newAdmins.some((a) => a.username.toLowerCase() === uVal.toLowerCase());
+
+            if (!isDup) {
+              newAdmins.push({
+                id: `adm-${Date.now()}-${idx}`,
+                username: uVal,
+                password: pVal,
+                nama: namaVal,
+                role: roleVal === 'superadmin' ? 'superadmin' : roleVal === 'proktor' ? 'proktor' : 'admin',
+                createdAt: new Date().toISOString(),
+              });
+              countAdded++;
+            }
+          }
+        });
+
+        if (countAdded > 0) {
+          const updated = [...adminsList, ...newAdmins];
+          onSaveConfig({ ...config, admins: updated });
+          saveAllAdminsToFirebase(newAdmins);
+          showAlert(`Sukses mengimpor ${countAdded} akun Admin baru dari Excel & tersimpan di Firebase!`);
+        } else {
+          showAlert('Tidak ada data admin baru yang diimpor. Pastikan format kolom Excel: Username, Password, Nama, Role.');
+        }
+      } catch (err) {
+        console.error(err);
+        showAlert('Gagal memproses file Excel Data Admin.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  };
+
+  const handleDeleteAdmin = (id: string, nama: string) => {
+    if (adminsList.length <= 1) {
+      showAlert('Minimal harus ada 1 Akun Admin aktif dalam sistem!');
+      return;
+    }
+    showConfirm(
+      'Hapus Akun Admin?',
+      `Apakah Anda yakin ingin menghapus akun admin "${nama}"?`,
+      () => {
+        const updated = adminsList.filter((a) => a.id !== id);
+        onSaveConfig({ ...config, admins: updated });
+        deleteAdminFromFirebase(id);
+        showAlert(`Akun Admin "${nama}" berhasil dihapus dari sistem & Firebase.`);
+      },
+      true
+    );
+  };
+
+  const handleDeleteSelectedAdmins = () => {
+    if (selectedAdminIds.length === 0) {
+      showAlert('Pilih/centang minimal 1 akun admin yang akan dihapus!');
+      return;
+    }
+    if (adminsList.length - selectedAdminIds.length < 1) {
+      showAlert('Tindakan dibatalkan: Sistem harus menyisakan sekurang-kurangnya 1 Akun Admin!');
+      return;
+    }
+    showConfirm(
+      `Hapus ${selectedAdminIds.length} Akun Admin Terpilih?`,
+      `Apakah Anda yakin ingin menghapus ${selectedAdminIds.length} akun admin yang dicentang?`,
+      () => {
+        const updated = adminsList.filter((a) => !selectedAdminIds.includes(a.id));
+        onSaveConfig({ ...config, admins: updated });
+        deleteSelectedAdminsFromFirebase(selectedAdminIds);
+        setSelectedAdminIds([]);
+        showAlert(`${selectedAdminIds.length} akun admin berhasil dihapus dari sistem & Firebase.`);
+      },
+      true
+    );
+  };
+
   // --- FILTERS & STATS ---
   const availableKodeGurus = Array.from(
     new Set([
@@ -1651,7 +2141,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     return matchesSearch && matchesKodeGuru;
   });
 
-  const filteredStudents = studentsList.filter((s) => {
+  const filteredStudents = displayStudentsList.filter((s) => {
     const matchesSearch =
       s.nama.toLowerCase().includes(studentSearch.toLowerCase()) ||
       s.nis.toLowerCase().includes(studentSearch.toLowerCase()) ||
@@ -1680,6 +2170,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       t.mapel.toLowerCase().includes(teacherSearch.toLowerCase())
   );
 
+  const filteredAdmins = adminsList.filter(
+    (a) =>
+      a.nama.toLowerCase().includes(adminSearch.toLowerCase()) ||
+      a.username.toLowerCase().includes(adminSearch.toLowerCase()) ||
+      (a.role || 'admin').toLowerCase().includes(adminSearch.toLowerCase())
+  );
+
   const averageScore =
     studentResults.length > 0
       ? Math.round(studentResults.reduce((sum, r) => sum + r.score, 0) / studentResults.length)
@@ -1694,10 +2191,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (targetMapel !== 'ALL' && q.mapel && q.mapel !== targetMapel) {
         return false;
       }
+      const qKodeGuru = (q.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase();
+      if (selectedGuruFilter !== 'ALL' && qKodeGuru !== selectedGuruFilter.toUpperCase()) {
+        return false;
+      }
       return true;
     });
 
-    const sortedResults = [...studentResults].sort((a, b) => b.score - a.score);
+    const scopedResults = studentResults.filter((r) => {
+      const rKodeGuru = (r.studentInfo.kodeGuru || config.kodeGuru || 'GURU01').toUpperCase();
+      return selectedGuruFilter === 'ALL' || rKodeGuru === selectedGuruFilter.toUpperCase();
+    });
+
+    const sortedResults = [...scopedResults].sort((a, b) => b.score - a.score);
     const totalRes = sortedResults.length;
     const groupSize = Math.max(1, Math.round(totalRes * 0.27));
     const upperGroup = sortedResults.slice(0, groupSize);
@@ -1950,6 +2456,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       />
       <input
         type="file"
+        ref={adminFileInputRef}
+        onChange={handleAdminExcelUpload}
+        accept=".xls,.xlsx"
+        className="hidden"
+      />
+      <input
+        type="file"
         ref={backupFileInputRef}
         onChange={handleRestoreAppData}
         accept=".json,.cbt,*"
@@ -2083,14 +2596,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 >
                   <div className="flex items-center gap-3">
                     <Users className="w-4 h-4 text-indigo-400 shrink-0" />
-                    <span>User Siswa & Guru</span>
+                    <span>{(loggedInTeacher || adminRole === 'teacher') ? 'Data Siswa' : 'User Siswa & Guru'}</span>
                   </div>
                   <span
                     className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                       activeTab === 'students' ? 'bg-indigo-800 text-white' : 'bg-slate-800 text-slate-400'
                     }`}
                   >
-                    {studentsList.length + teachersList.length}
+                    {(loggedInTeacher || adminRole === 'teacher') ? displayStudentsList.length : (studentsList.length + teachersList.length)}
                   </span>
                 </button>
 
@@ -2318,6 +2831,73 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </header>
 
+        {/* MULTI-GURU SCOPE CONTROL BANNER */}
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-4 sm:px-6 py-2.5 border-b border-indigo-900/60 shadow-inner flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 shrink-0">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300 bg-indigo-950/90 px-2 py-0.5 rounded border border-indigo-800">
+                  Aplikasi Multi Guru & Kelas
+                </span>
+                {loggedInTeacher ? (
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/90 px-2 py-0.5 rounded border border-emerald-800 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-emerald-400" /> Sesi Akun Guru Terkunci
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-amber-300 bg-amber-950/90 px-2 py-0.5 rounded border border-amber-800">
+                    Akses Superadmin (Semua Guru)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs font-extrabold text-white mt-0.5 flex flex-wrap items-center gap-2">
+                {activeTeacherObj ? (
+                  <>
+                    <span>Guru: <strong className="text-amber-300">{activeTeacherObj.nama}</strong></span>
+                    <span className="text-slate-500">•</span>
+                    <span>Kode Guru: <code className="bg-slate-800 px-1.5 py-0.5 rounded text-indigo-300 font-mono">{activeTeacherObj.kodeGuru || 'GURU01'}</code></span>
+                    <span className="text-slate-500">•</span>
+                    <span>Mata Pelajaran: <strong className="text-sky-300">{activeTeacherObj.mapel}</strong></span>
+                    <span className="text-slate-500">•</span>
+                    <span>NIP: <span className="text-slate-300 font-mono">{activeTeacherObj.nip}</span></span>
+                  </>
+                ) : (
+                  <span className="text-slate-300">Menampilkan Seluruh Rekap Data Guru, Kelas & Mata Pelajaran (Superadmin Overview)</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* SELECTOR FOR SUPERADMIN / ADMIN */}
+          {!loggedInTeacher && (
+            <div className="flex items-center gap-2 shrink-0">
+              <label className="text-[11px] font-bold text-indigo-200 whitespace-nowrap hidden sm:inline">
+                Filter Skop Guru:
+              </label>
+              <select
+                value={selectedGuruFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedGuruFilter(val);
+                  setSelectedBankKodeGuru(val);
+                  setStudentKodeGuruFilter(val);
+                  setRekapKodeGuruFilter(val);
+                }}
+                className="bg-slate-800 text-white font-bold text-xs rounded-xl px-3 py-1.5 border border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer shadow-sm"
+              >
+                <option value="ALL">🌟 Semua Guru & Mapel (Superadmin Overview)</option>
+                {teachersList.map((t) => (
+                  <option key={t.id} value={t.kodeGuru || t.nip}>
+                    [{t.kodeGuru || 'GURU'}] {t.nama} — ({t.mapel})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
         {/* Scrollable Main Content Container */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {/* TAB: PANDUAN UNTUK GURU */}
@@ -2355,7 +2935,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                     <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Peserta Ujian</span>
-                      <span className="text-xs font-black text-indigo-400 block">{studentsList.length} Siswa</span>
+                      <span className="text-xs font-black text-indigo-400 block">{displayStudentsList.length} Siswa</span>
                     </div>
                     <div className="bg-slate-900/80 border border-slate-700/60 rounded-xl p-2.5 text-center">
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">Sesi Ujian</span>
@@ -3520,31 +4100,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* TAB 2: MANAJEMEN USER (SISWA & GURU) */}
       {activeTab === 'students' && (
         <div className="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
-          {/* Sub Tab Switcher: Siswa vs Guru */}
-          <div className="bg-white p-2 rounded-2xl shadow-xs border border-gray-200 flex gap-2 w-full sm:w-auto self-start">
-            <button
-              onClick={() => setUserSubTab('student')}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
-                userSubTab === 'student'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Users className="w-4 h-4" /> Data Siswa ({studentsList.length})
-            </button>
-            <button
-              onClick={() => setUserSubTab('teacher')}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
-                userSubTab === 'teacher'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" /> Data Guru ({teachersList.length})
-            </button>
-          </div>
+          {/* Sub Tab Switcher: Siswa, Guru & Admin (Superadmin Only) */}
+          {!loggedInTeacher && adminRole !== 'teacher' && (
+            <div className="bg-white p-2 rounded-2xl shadow-xs border border-gray-200 flex gap-2 w-full sm:w-auto self-start flex-wrap">
+              <button
+                onClick={() => setUserSubTab('student')}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                  userSubTab === 'student'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Users className="w-4 h-4" /> Data Siswa ({displayStudentsList.length})
+              </button>
+              <button
+                onClick={() => setUserSubTab('teacher')}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                  userSubTab === 'teacher'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4" /> Data Guru ({teachersList.length})
+              </button>
+              <button
+                onClick={() => setUserSubTab('admin')}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                  userSubTab === 'admin'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Shield className="w-4 h-4" /> Data Admin ({adminsList.length})
+              </button>
+            </div>
+          )}
 
-          {userSubTab === 'student' ? (
+          {(userSubTab === 'student' || loggedInTeacher || adminRole === 'teacher') ? (
             /* STUDENT MANAGEMENT UI */
             <>
               {/* Action Header Section */}
@@ -3552,7 +4144,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div>
                   <h2 className="font-bold text-xl text-gray-800 flex items-center gap-2">
                     <Users className="w-6 h-6 text-indigo-600" /> Manajemen User & Data Siswa (
-                    <span className="text-indigo-600 font-black">{studentsList.length}</span>)
+                    <span className="text-indigo-600 font-black">{displayStudentsList.length}</span>)
                   </h2>
                   <p className="text-xs text-gray-500 mt-1">
                     Kelola daftar siswa yang berhak mengikuti ujian. Siswa dapat login menggunakan <b>NIS</b> dan <b>TOKEN Ujian</b>.
@@ -3613,7 +4205,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       Nonaktif: <strong>{inactiveStudentsCount}</strong> Siswa
                     </div>
                     <div className="px-2.5 py-1 bg-indigo-500/20 text-indigo-200 font-bold rounded-lg border border-indigo-500/30">
-                      Total: <strong>{studentsList.length}</strong>
+                      Total: <strong>{displayStudentsList.length}</strong>
                     </div>
                   </div>
                 </div>
@@ -3680,7 +4272,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         {uniqueClasses.map((kelasName) => {
-                          const studentsInClass = studentsList.filter((s) => s.kelas === kelasName);
+                          const studentsInClass = displayStudentsList.filter((s) => s.kelas === kelasName);
                           const activeInClass = studentsInClass.filter((s) => s.isActive !== false).length;
                           const isAllActive = studentsInClass.length > 0 && activeInClass === studentsInClass.length;
 
@@ -3983,7 +4575,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
             </>
-          ) : (
+          ) : userSubTab === 'teacher' ? (
             /* TEACHER MANAGEMENT UI */
             <>
               {/* Action Header Section */}
@@ -4031,9 +4623,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               {/* Table Area */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex-1 flex flex-col">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-base text-gray-800">Daftar Guru Terdaftar</h3>
-                  <div className="relative w-64">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-bold text-base text-gray-800">Daftar Guru Terdaftar</h3>
+                    {selectedTeacherIds.length > 0 && adminRole !== 'teacher' && (
+                      <button
+                        onClick={handleDeleteSelectedTeachers}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Hapus ({selectedTeacherIds.length}) Terpilih
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative w-full sm:w-64">
                     <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
                     <input
                       type="text"
@@ -4049,6 +4651,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-gray-200 bg-slate-50 text-gray-600 text-[11px] font-bold uppercase tracking-wider">
+                        {adminRole !== 'teacher' && (
+                          <th className="p-3 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                filteredTeachers.length > 0 &&
+                                filteredTeachers.every((t) => selectedTeacherIds.includes(t.id))
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedTeacherIds(Array.from(new Set([...selectedTeacherIds, ...filteredTeachers.map((t) => t.id)])));
+                                } else {
+                                  const fIds = filteredTeachers.map((t) => t.id);
+                                  setSelectedTeacherIds(selectedTeacherIds.filter((id) => !fIds.includes(id)));
+                                }
+                              }}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                          </th>
+                        )}
                         <th className="p-3">No</th>
                         <th className="p-3">Username</th>
                         <th className="p-3">Nama Lengkap Guru</th>
@@ -4060,48 +4682,258 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <tbody className="divide-y divide-gray-100 text-xs">
                       {filteredTeachers.length === 0 ? (
                         <tr>
-                          <td colSpan={adminRole !== 'teacher' ? 6 : 5} className="p-8 text-center text-gray-400 font-medium">
+                          <td colSpan={adminRole !== 'teacher' ? 7 : 5} className="p-8 text-center text-gray-400 font-medium">
                             Belum ada data guru terdaftar.
                           </td>
                         </tr>
                       ) : (
-                        filteredTeachers.map((t, idx) => (
-                          <tr key={t.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-3 font-medium text-gray-400">{idx + 1}</td>
-                            <td className="p-3 font-mono font-bold text-slate-800">{t.nip}</td>
-                            <td className="p-3 font-bold text-gray-900">{t.nama}</td>
-                            <td className="p-3">
-                              <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold text-[11px] border border-indigo-100">
-                                {t.mapel}
-                              </span>
-                            </td>
-                            <td className="p-3 text-center">
-                              <span className="bg-amber-50 text-amber-800 font-mono px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">
-                                {t.kodeGuru || 'GURU01'}
-                              </span>
-                            </td>
-                            {adminRole !== 'teacher' && (
+                        filteredTeachers.map((t, idx) => {
+                          const isSelected = selectedTeacherIds.includes(t.id);
+                          return (
+                            <tr key={t.id} className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-indigo-50/40' : ''}`}>
+                              {adminRole !== 'teacher' && (
+                                <td className="p-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      if (isSelected) {
+                                        setSelectedTeacherIds(selectedTeacherIds.filter((id) => id !== t.id));
+                                      } else {
+                                        setSelectedTeacherIds([...selectedTeacherIds, t.id]);
+                                      }
+                                    }}
+                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                  />
+                                </td>
+                              )}
+                              <td className="p-3 font-medium text-gray-400">{idx + 1}</td>
+                              <td className="p-3 font-mono font-bold text-slate-800">{t.nip}</td>
+                              <td className="p-3 font-bold text-gray-900">{t.nama}</td>
+                              <td className="p-3">
+                                <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold text-[11px] border border-indigo-100">
+                                  {t.mapel}
+                                </span>
+                              </td>
                               <td className="p-3 text-center">
-                                <div className="flex items-center justify-center gap-1">
+                                <span className="bg-amber-50 text-amber-800 font-mono px-2 py-0.5 rounded text-[11px] font-bold border border-amber-200">
+                                  {t.kodeGuru || 'GURU01'}
+                                </span>
+                              </td>
+                              {adminRole !== 'teacher' && (
+                                <td className="p-3 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      onClick={() => setEditingTeacher(t)}
+                                      className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Edit Data Guru"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteTeacher(t.id, t.nama)}
+                                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Hapus Guru"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ADMIN MANAGEMENT UI */
+            <>
+              {/* Action Header Section */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="font-bold text-xl text-gray-800 flex items-center gap-2">
+                    <Shield className="w-6 h-6 text-indigo-600" /> Manajemen User & Akun Admin (
+                    <span className="text-indigo-600 font-black">{adminsList.length}</span>)
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Kelola daftar akun Admin & Proktor CBT. Data otomatis terhubung dan disinkronkan dengan <b>Firebase Cloud Store</b>.
+                  </p>
+                </div>
+
+                {adminRole !== 'teacher' ? (
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={handleDownloadAdminTemplate}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" /> Template Excel Admin
+                    </button>
+
+                    <button
+                      onClick={() => adminFileInputRef.current?.click()}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4" /> Upload Excel Admin
+                    </button>
+
+                    <button
+                      onClick={() => setIsAddAdminModalOpen(true)}
+                      className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <UserPlus className="w-4 h-4" /> Tambah Admin Manual
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
+                    <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Akses Terbatas: Hanya Administrator Utama yang dapat mengelola akun admin.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Table Area */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex-1 flex flex-col">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-bold text-base text-gray-800">Daftar Akun Admin Terdaftar</h3>
+                    {selectedAdminIds.length > 0 && adminRole !== 'teacher' && (
+                      <button
+                        onClick={handleDeleteSelectedAdmins}
+                        className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Hapus ({selectedAdminIds.length}) Terpilih
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={adminSearch}
+                      onChange={(e) => setAdminSearch(e.target.value)}
+                      placeholder="Cari Username / Nama / Role..."
+                      className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-slate-50 text-gray-600 text-[11px] font-bold uppercase tracking-wider">
+                        {adminRole !== 'teacher' && (
+                          <th className="p-3 w-10 text-center">
+                            <input
+                              type="checkbox"
+                              checked={
+                                filteredAdmins.length > 0 &&
+                                filteredAdmins.every((a) => selectedAdminIds.includes(a.id))
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedAdminIds(Array.from(new Set([...selectedAdminIds, ...filteredAdmins.map((a) => a.id)])));
+                                } else {
+                                  const fIds = filteredAdmins.map((a) => a.id);
+                                  setSelectedAdminIds(selectedAdminIds.filter((id) => !fIds.includes(id)));
+                                }
+                              }}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                            />
+                          </th>
+                        )}
+                        <th className="p-3">No</th>
+                        <th className="p-3">Username Admin</th>
+                        <th className="p-3">Nama Lengkap</th>
+                        <th className="p-3 text-center">Jabatan / Role</th>
+                        <th className="p-3 text-center">Password</th>
+                        {adminRole !== 'teacher' && <th className="p-3 text-center">Aksi</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-xs">
+                      {filteredAdmins.length === 0 ? (
+                        <tr>
+                          <td colSpan={adminRole !== 'teacher' ? 7 : 6} className="p-8 text-center text-gray-400 font-medium">
+                            Belum ada data akun admin terdaftar.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAdmins.map((a, idx) => {
+                          const isSelected = selectedAdminIds.includes(a.id);
+                          const isShowPass = !!showPasswordMap[a.id];
+                          return (
+                            <tr key={a.id} className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-indigo-50/40' : ''}`}>
+                              {adminRole !== 'teacher' && (
+                                <td className="p-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => {
+                                      if (isSelected) {
+                                        setSelectedAdminIds(selectedAdminIds.filter((id) => id !== a.id));
+                                      } else {
+                                        setSelectedAdminIds([...selectedAdminIds, a.id]);
+                                      }
+                                    }}
+                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                  />
+                                </td>
+                              )}
+                              <td className="p-3 font-medium text-gray-400">{idx + 1}</td>
+                              <td className="p-3 font-mono font-bold text-indigo-900">{a.username}</td>
+                              <td className="p-3 font-bold text-gray-900">{a.nama}</td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border uppercase ${
+                                    a.role === 'superadmin'
+                                      ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                      : a.role === 'proktor'
+                                      ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                      : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                  }`}
+                                >
+                                  {a.role || 'admin'}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg font-mono text-xs">
+                                  <span>{isShowPass ? a.password || '—' : '••••••••'}</span>
                                   <button
-                                    onClick={() => setEditingTeacher(t)}
-                                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                                    title="Edit Data Guru"
+                                    type="button"
+                                    onClick={() => setShowPasswordMap((prev) => ({ ...prev, [a.id]: !prev[a.id] }))}
+                                    className="text-slate-500 hover:text-slate-800 transition-colors ml-1 cursor-pointer"
+                                    title={isShowPass ? 'Sembunyikan Password' : 'Lihat Password'}
                                   >
-                                    <Edit3 className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteTeacher(t.id, t.nama)}
-                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                    title="Hapus Guru"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
+                                    {isShowPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                   </button>
                                 </div>
                               </td>
-                            )}
-                          </tr>
-                        ))
+                              {adminRole !== 'teacher' && (
+                                <td className="p-3 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      onClick={() => setEditingAdmin(a)}
+                                      className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Edit Akun Admin"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteAdmin(a.id, a.nama)}
+                                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                      title="Hapus Akun Admin"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -5997,6 +6829,194 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => setEditingTeacher(null)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-md cursor-pointer"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: TAMBAH ADMIN MANUAL */}
+      {isAddAdminModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
+            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-indigo-400" /> Tambah Akun Admin / Proktor
+              </h3>
+              <button
+                onClick={() => setIsAddAdminModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddAdminManual} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Username Admin <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newAdminUsername}
+                  onChange={(e) => setNewAdminUsername(e.target.value)}
+                  placeholder="Contoh: adminproktor01"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Password Akses <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newAdminPassword}
+                  onChange={(e) => setNewAdminPassword(e.target.value)}
+                  placeholder="Contoh: ProktorPass2026"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Nama Lengkap Admin / Proktor <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newAdminNama}
+                  onChange={(e) => setNewAdminNama(e.target.value)}
+                  placeholder="Contoh: Haji Ahmad, S.Kom"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Jabatan / Role
+                </label>
+                <select
+                  value={newAdminRole}
+                  onChange={(e) => setNewAdminRole(e.target.value as 'superadmin' | 'proktor' | 'admin')}
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-bold bg-white"
+                >
+                  <option value="admin">Administrator (Standard)</option>
+                  <option value="proktor">Proktor Ujian</option>
+                  <option value="superadmin">Super Admin Utama</option>
+                </select>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddAdminModalOpen(false)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-md cursor-pointer"
+                >
+                  Simpan Akun Admin
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT AKUN ADMIN */}
+      {editingAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
+            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-indigo-400" /> Edit Akun Admin / Proktor
+              </h3>
+              <button
+                onClick={() => setEditingAdmin(null)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateAdminManual} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Username Admin <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingAdmin.username}
+                  onChange={(e) => setEditingAdmin({ ...editingAdmin, username: e.target.value })}
+                  placeholder="Contoh: adminproktor01"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Password Akses <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingAdmin.password || ''}
+                  onChange={(e) => setEditingAdmin({ ...editingAdmin, password: e.target.value })}
+                  placeholder="Password Baru"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Nama Lengkap Admin <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editingAdmin.nama}
+                  onChange={(e) => setEditingAdmin({ ...editingAdmin, nama: e.target.value })}
+                  placeholder="Contoh: Haji Ahmad, S.Kom"
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  Jabatan / Role
+                </label>
+                <select
+                  value={editingAdmin.role || 'admin'}
+                  onChange={(e) => setEditingAdmin({ ...editingAdmin, role: e.target.value as 'superadmin' | 'proktor' | 'admin' })}
+                  className="w-full border-2 border-gray-200 rounded-xl p-2.5 focus:border-indigo-500 focus:outline-none text-sm font-bold bg-white"
+                >
+                  <option value="admin">Administrator (Standard)</option>
+                  <option value="proktor">Proktor Ujian</option>
+                  <option value="superadmin">Super Admin Utama</option>
+                </select>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingAdmin(null)}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
                 >
                   Batal

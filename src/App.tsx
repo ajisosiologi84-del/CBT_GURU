@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AppConfig, Question, Option, ViewState, StudentInfo, StudentResult, CheatingLog, BroadcastAlert } from './types';
+import { AppConfig, Question, Option, ViewState, StudentInfo, StudentResult, CheatingLog, BroadcastAlert, TeacherUser } from './types';
 import { defaultQuestions } from './data/defaultQuestions';
 import { defaultStudents } from './data/defaultStudents';
 import { encryptResult } from './utils/crypto';
@@ -20,8 +20,13 @@ import {
   subscribeStudentResultsFromFirebase,
   loadStudentsFromFirebase,
   loadTeachersFromFirebase,
+  loadAdminsFromFirebase,
   saveAllStudentsToFirebase,
   saveAllTeachersToFirebase,
+  saveAllAdminsToFirebase,
+  subscribeTeachersFromFirebase,
+  subscribeStudentsFromFirebase,
+  subscribeAdminsFromFirebase,
 } from './lib/firebase';
 
 const STORAGE_KEY = 'cbt_sosiologi_config_v2';
@@ -62,6 +67,9 @@ export default function App() {
       teachers: [
         { id: 't1', nip: '198501152010011002', nama: 'Drs. Aji Sosiologi, M.Pd', mapel: 'Sosiologi', kodeGuru: 'GURU01' },
         { id: 't2', nip: '198803202012022005', nama: 'Siti Rahmawati, S.Pd', mapel: 'Sosiologi', kodeGuru: 'GURU02' },
+      ],
+      admins: [
+        { id: 'adm1', username: 'admincbt', password: 'JuniorCBT2026', nama: 'Administrator Utama', role: 'superadmin', createdAt: new Date().toISOString() }
       ],
       maxQuestionsToDisplay: 0,
       maxAttempts: 1,
@@ -104,6 +112,9 @@ export default function App() {
       if (updatedConfig.teachers && updatedConfig.teachers.length > 0) {
         saveAllTeachersToFirebase(updatedConfig.teachers);
       }
+      if (updatedConfig.admins && updatedConfig.admins.length > 0) {
+        saveAllAdminsToFirebase(updatedConfig.admins);
+      }
     } catch (e) {
       console.error('Failed to save to local storage or Firebase:', e);
     }
@@ -145,29 +156,81 @@ export default function App() {
   // Firebase Synchronization Effect
   useEffect(() => {
     // Initial fetch from Firebase
-    loadConfigFromFirebase().then(async (remoteConfig) => {
-      let currentConfig = remoteConfig;
-      if (currentConfig && Array.isArray(currentConfig.questions) && currentConfig.questions.length > 0) {
-        let merged = mergeRemoteConfigWithLocalToken(currentConfig);
+    loadConfigFromFirebase().then((remoteConfig) => {
+      if (remoteConfig && Array.isArray(remoteConfig.questions) && remoteConfig.questions.length > 0) {
+        const merged = mergeRemoteConfigWithLocalToken(remoteConfig);
+        setConfig((prev) => {
+          const newConfig = {
+            ...merged,
+            teachers: (merged.teachers && merged.teachers.length > 0) ? merged.teachers : prev.teachers,
+            students: (merged.students && merged.students.length > 0) ? merged.students : prev.students,
+          };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
+          } catch (e) {}
+          return newConfig;
+        });
+      }
+    }).catch(() => {});
 
-        // Sync remote standalone students & teachers collections if available
-        try {
-          const [remoteStudents, remoteTeachers] = await Promise.all([
-            loadStudentsFromFirebase(),
-            loadTeachersFromFirebase(),
-          ]);
-          if (remoteStudents.length > 0) {
-            merged = { ...merged, students: remoteStudents };
+    // Unconditional fetch for Teachers and Students
+    loadTeachersFromFirebase().then((remoteTeachers) => {
+      if (remoteTeachers && remoteTeachers.length > 0) {
+        setConfig((prev) => {
+          const updated = { ...prev, teachers: remoteTeachers };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+      } else {
+        // Seed initial local teachers to Firebase if remote is empty
+        setConfig((prev) => {
+          if (prev.teachers && prev.teachers.length > 0) {
+            saveAllTeachersToFirebase(prev.teachers);
           }
-          if (remoteTeachers.length > 0) {
-            merged = { ...merged, teachers: remoteTeachers };
-          }
-        } catch (e) {}
+          return prev;
+        });
+      }
+    }).catch(() => {});
 
-        setConfig(merged);
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-        } catch (e) {}
+    loadStudentsFromFirebase().then((remoteStudents) => {
+      if (remoteStudents && remoteStudents.length > 0) {
+        setConfig((prev) => {
+          const updated = { ...prev, students: remoteStudents };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+      } else {
+        // Seed initial local students to Firebase if remote is empty
+        setConfig((prev) => {
+          if (prev.students && prev.students.length > 0) {
+            saveAllStudentsToFirebase(prev.students);
+          }
+          return prev;
+        });
+      }
+    }).catch(() => {});
+
+    loadAdminsFromFirebase().then((remoteAdmins) => {
+      if (remoteAdmins && remoteAdmins.length > 0) {
+        setConfig((prev) => {
+          const updated = { ...prev, admins: remoteAdmins };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+      } else {
+        // Seed initial local admins to Firebase if remote is empty
+        setConfig((prev) => {
+          if (prev.admins && prev.admins.length > 0) {
+            saveAllAdminsToFirebase(prev.admins);
+          }
+          return prev;
+        });
       }
     }).catch(() => {});
 
@@ -186,13 +249,48 @@ export default function App() {
         const merged = mergeRemoteConfigWithLocalToken(remoteConfig);
         setConfig((prev) => ({
           ...merged,
-          // Preserve students and teachers if already loaded locally and newer
           students: (merged.students && merged.students.length > 0) ? merged.students : prev.students,
           teachers: (merged.teachers && merged.teachers.length > 0) ? merged.teachers : prev.teachers,
         }));
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
         } catch (e) {}
+      }
+    });
+
+    const unsubTeachers = subscribeTeachersFromFirebase((remoteTeachers) => {
+      if (Array.isArray(remoteTeachers) && remoteTeachers.length > 0) {
+        setConfig((prev) => {
+          const updated = { ...prev, teachers: remoteTeachers };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+      }
+    });
+
+    const unsubStudents = subscribeStudentsFromFirebase((remoteStudents) => {
+      if (Array.isArray(remoteStudents) && remoteStudents.length > 0) {
+        setConfig((prev) => {
+          const updated = { ...prev, students: remoteStudents };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+      }
+    });
+
+    const unsubAdmins = subscribeAdminsFromFirebase((remoteAdmins) => {
+      if (Array.isArray(remoteAdmins) && remoteAdmins.length > 0) {
+        setConfig((prev) => {
+          const updated = { ...prev, admins: remoteAdmins };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
       }
     });
 
@@ -207,6 +305,9 @@ export default function App() {
 
     return () => {
       unsubConfig();
+      unsubTeachers();
+      unsubStudents();
+      unsubAdmins();
       unsubResults();
     };
   }, []);
@@ -214,6 +315,7 @@ export default function App() {
   // View State & Admin Role
   const [viewState, setViewState] = useState<ViewState>('login');
   const [adminRole, setAdminRole] = useState<'admin' | 'teacher'>('admin');
+  const [loggedInTeacher, setLoggedInTeacher] = useState<TeacherUser | null>(null);
 
   // Student Session State
   const [studentInfo, setStudentInfo] = useState<StudentInfo>({
@@ -338,8 +440,16 @@ export default function App() {
       return;
     }
 
-    // Filter only active questions
-    const activePool = config.questions.filter((q) => q.isActive !== false);
+    // Filter active questions scoped to the student's assigned teacher/subject
+    const activePool = config.questions.filter((q) => {
+      if (q.isActive === false) return false;
+      if (studentInfo.kodeGuru && q.kodeGuru) {
+        if (q.kodeGuru.toUpperCase() !== studentInfo.kodeGuru.toUpperCase()) {
+          return false;
+        }
+      }
+      return true;
+    });
     if (activePool.length === 0) {
       showAlert('Tidak ada soal yang aktif/dipilih di Bank Soal! Silakan aktifkan soal terlebih dahulu di Panel Pengaturan.');
       return;
@@ -353,16 +463,24 @@ export default function App() {
       });
     }
 
+    // Teacher Config Override for assigned teacher
+    const teacherConfig = studentInfo.kodeGuru ? config.teacherConfigs?.[studentInfo.kodeGuru] : undefined;
+    const effectiveDuration = teacherConfig?.duration ?? config.duration;
+    const effectiveRandomizeQuestions = teacherConfig?.randomizeQuestions ?? config.randomizeQuestions;
+    const effectiveRandomizeOptions = teacherConfig?.randomizeOptions ?? config.randomizeOptions;
+    const effectiveMaxQuestionsToDisplay = teacherConfig?.maxQuestionsToDisplay ?? config.maxQuestionsToDisplay;
+    const effectiveExamSchedule = teacherConfig?.examSchedule ?? config.examSchedule;
+
     // 1. Prepare active questions pool
     let pool = [...activePool];
 
     // 2. Randomize questions order if enabled (default true)
-    if (config.randomizeQuestions !== false) {
+    if (effectiveRandomizeQuestions !== false) {
       pool = shuffleArray<Question>(pool);
     }
 
     // 3. Limit total questions displayed if maxQuestionsToDisplay > 0
-    const maxQ = Number(config.maxQuestionsToDisplay || 0);
+    const maxQ = Number(effectiveMaxQuestionsToDisplay || 0);
     if (maxQ > 0 && maxQ < pool.length) {
       pool = pool.slice(0, maxQ);
     }
@@ -370,7 +488,7 @@ export default function App() {
     // 4. Randomize options for each question if enabled (default true)
     const preparedQuestions: Question[] = pool.map((q: Question) => {
       let opts = [...q.options];
-      if (config.randomizeOptions !== false) {
+      if (effectiveRandomizeOptions !== false) {
         opts = shuffleArray<Option>(opts);
       }
       const labels = ['A', 'B', 'C', 'D', 'E'];
@@ -389,7 +507,7 @@ export default function App() {
     setUserAnswers(new Array(preparedQuestions.length).fill(null));
     setRaguList(new Array(preparedQuestions.length).fill(false));
     setCurrentIndex(0);
-    setTimeRemaining(config.duration * 60);
+    setTimeRemaining(effectiveDuration * 60);
     setWarnings(0);
     setCheatingLogs([]);
     setViewState('test');
@@ -399,10 +517,13 @@ export default function App() {
   useEffect(() => {
     if (viewState !== 'test') return;
 
+    const teacherConfig = studentInfo.kodeGuru ? config.teacherConfigs?.[studentInfo.kodeGuru] : undefined;
+    const effectiveExamSchedule = teacherConfig?.examSchedule ?? config.examSchedule;
+
     const timer = setInterval(() => {
       // Check if schedule end time is reached
-      if (config.examSchedule?.endTime) {
-        const endTimeMs = new Date(config.examSchedule.endTime).getTime();
+      if (effectiveExamSchedule?.endTime) {
+        const endTimeMs = new Date(effectiveExamSchedule.endTime).getTime();
         if (!isNaN(endTimeMs) && Date.now() >= endTimeMs) {
           clearInterval(timer);
           triggerAutoSubmit('⏰ Jam Jadwal Selesai Ujian telah berakhir (Sesuai Batas Waktu Ujian). Seluruh jawaban Anda otomatis dikirim.');
@@ -428,7 +549,9 @@ export default function App() {
     if (viewState !== 'test') return;
 
     // 1. Force Stop Check: Check if sessionStatus is CLOSED or FORCE_STOPPED by Proktor
-    const status = config.examSchedule?.sessionStatus;
+    const teacherConfig = studentInfo.kodeGuru ? config.teacherConfigs?.[studentInfo.kodeGuru] : undefined;
+    const effectiveExamSchedule = teacherConfig?.examSchedule ?? config.examSchedule;
+    const status = effectiveExamSchedule?.sessionStatus;
     if (status === 'CLOSED' || status === 'FORCE_STOPPED') {
       triggerAutoSubmit('🚨 UJIAN TELAH DIHENTIKAN OLEH PROKTOR / ADMIN! Seluruh jawaban Anda telah tersimpan secara otomatis.');
       return;
@@ -834,8 +957,9 @@ export default function App() {
             setStudentInfo(info);
             setViewState('pre-test');
           }}
-          onAdminLoginSuccess={(role) => {
+          onAdminLoginSuccess={(role, teacherDetails) => {
             setAdminRole(role);
+            setLoggedInTeacher(teacherDetails || null);
             setViewState('admin');
           }}
         />
@@ -846,6 +970,7 @@ export default function App() {
           config={config}
           studentResults={studentResults}
           adminRole={adminRole}
+          loggedInTeacher={loggedInTeacher}
           onSaveConfig={saveConfig}
           onSaveStudentResults={saveStudentResults}
           onOpenQuestionModal={(q) => {
@@ -854,7 +979,10 @@ export default function App() {
           }}
           onDeleteQuestion={handleDeleteQuestion}
           onResetDefaultQuestions={handleResetDefaultQuestions}
-          onLogout={() => setViewState('login')}
+          onLogout={() => {
+            setLoggedInTeacher(null);
+            setViewState('login');
+          }}
           showAlert={showAlert}
           showConfirm={showConfirm}
         />

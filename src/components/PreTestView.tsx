@@ -47,8 +47,13 @@ export const PreTestView: React.FC<PreTestViewProps> = ({
     }
   };
 
+  const teacherConfig = studentInfo.kodeGuru ? config.teacherConfigs?.[studentInfo.kodeGuru] : undefined;
+  const effectiveSchedule = teacherConfig?.examSchedule || config.examSchedule;
+  const sessionStatus = effectiveSchedule?.sessionStatus || 'ACTIVE';
+  const effectiveDuration = teacherConfig?.duration ?? config.duration;
+  const effectiveKkm = teacherConfig?.kkm ?? config.kkm;
+
   const isLimitReached = studentAttemptsCount >= maxAttempts;
-  const sessionStatus = config.examSchedule?.sessionStatus || 'ACTIVE';
   const isSessionClosed = sessionStatus === 'CLOSED';
   const isSessionDraft = sessionStatus === 'DRAFT';
   const isStartDisabled = isLimitReached || isSessionClosed || isSessionDraft;
